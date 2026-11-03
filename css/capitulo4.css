@@ -1,0 +1,30 @@
+
+/* ordo · capítulo 4 · conserva íntegra la plantilla original */
+.c4{font-family:Tecnico,Arial,sans-serif;color:#173f55;padding:27px 32px 44px;max-width:1240px;margin:0 auto}
+.c4 *{box-sizing:border-box}
+.c4 h1,.c4 h2,.c4 h3,.c4 p{margin-top:0}
+.c4 h1{font-size:29px;margin-bottom:5px;font-weight:700}.c4 h2{font-size:23px}
+.c4-intro{color:#617f91;margin:0 0 24px}
+.c4-top{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.c4-icono{width:44px;height:44px;border:1px solid #93bbc9;border-radius:8px;display:grid;place-items:center;color:#176487;font-size:23px}
+.c4-top h1{margin:0}
+.c4-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.c4-gordito{display:flex;gap:14px;align-items:center;min-height:132px;text-align:left;padding:20px;border:1.5px solid #7baec3;border-radius:8px;background:#fff;color:#145471;cursor:pointer}
+.c4-gordito:hover,.c4-gordito:focus-visible{background:#eaf5f9;outline-color:#19a5d1}
+.c4-gordito .ico{flex:none;width:44px;height:44px;display:grid;place-items:center;border:1px solid #8abbd1;border-radius:50%;font-size:19px;font-weight:700}
+.c4-gordito strong{font-size:20px;display:block}.c4-gordito small{font-size:14px;color:#628394;display:block;margin-top:5px}
+.c4-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px}
+.c4-btn{display:inline-flex;align-items:center;justify-content:center;padding:9px 14px;min-height:39px;border:1px solid #176487;border-radius:5px;background:#fff;color:#135678;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+.c4-btn:hover{background:#e9f4f8}.c4-btn.primary{background:#176487;color:white}
+.c4-btn.warn{color:#a22b24;border-color:#b7746f}.c4-btn:disabled{opacity:.5;cursor:not-allowed}
+.c4-box{background:#fff;border:1px solid #d5e5ea;border-radius:7px;padding:18px 20px;margin-bottom:16px}
+.c4-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px}
+.c4-field{display:flex;flex-direction:column;gap:6px;font-size:15px;font-weight:700;min-width:0}
+.c4-field.wide{grid-column:1/-1}.c4 input,.c4 select,.c4 textarea{width:100%;max-width:100%;background:#fff;border:1px solid #9cbac7;border-radius:4px;padding:10px 11px;color:#183d51;font:inherit;font-weight:400}
+.c4 textarea{min-height:125px;resize:vertical;line-height:1.5}.c4 textarea.large{min-height:235px}
+.c4-table{border-collapse:collapse;width:100%;background:#fff}.c4-table th,.c4-table td{border-bottom:1px solid #e0e9ed;padding:11px 9px;text-align:left;vertical-align:top}.c4-table th{font-size:14px;color:#526f7f}.c4-table td{font-size:15px}
+.c4-tag{display:inline-block;border:1px solid #b1c8d2;border-radius:20px;padding:2px 8px;font-size:13px;color:#536b78}.c4-tag.old{border-color:#c89494;color:#9f5353}
+.c4-help{font-size:14px;color:#6a8392;line-height:1.45}.c4-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.c4-check{display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid #e0e9ed;border-radius:5px;cursor:pointer}.c4-check input{width:auto}
+.c4-paper{margin:15px 0;background:white;border:1px solid #bfd3dd;padding:28px;line-height:1.65;color:#20282e}.c4-paper-head{display:flex;justify-content:space-between;gap:16px;align-items:center;border-bottom:1px solid #9daeb6;padding-bottom:10px}.c4-paper-head img{width:auto;max-width:180px;max-height:65px;object-fit:contain;background:#176487;padding:7px}.c4-paper h2{margin:22px 0 12px;color:#152e3b}.c4-paper p{white-space:pre-wrap}.c4-paper .c4-datos{font-size:14px;color:#647b87;margin:10px 0}.c4-paper .c4-texto{white-space:pre-wrap;overflow-wrap:anywhere}.c4-paper figure{margin:18px 0}.c4-paper figure img{display:block;max-width:100%;max-height:550px;object-fit:contain}.c4-paper figcaption{font-size:13px;color:#637987}
+.c4-history{display:grid;gap:9px}.c4-rev{padding:12px;border:1px solid #dce6ec;border-radius:5px;background:#fff}.c4-rev strong{margin-right:12px}.c4-note{padding:10px 14px;background:#f2f7f9;color:#5c7684;border-left:3px solid #87afc2;font-size:14px}
+@media(max-width:850px){.c4{padding:18px 15px}.c4-grid,.c4-form,.c4-checks{grid-template-columns:1fr}.c4-box{padding:14px}.c4-table{display:block;overflow-x:auto}}

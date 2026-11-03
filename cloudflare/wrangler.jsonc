@@ -1,0 +1,12 @@
+{
+  "name": "ordo-api",
+  "main": "worker.js",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": true,
+  "vars": {
+    "FRONTEND_ORIGIN": "https://ritaqapp.github.io"
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "ordo", "database_id": "SUSTITUIR_POR_ID_REAL_DE_D1" }
+  ]
+}

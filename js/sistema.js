@@ -101,6 +101,9 @@
       if (numero === '3' && esCalidad && window.OrdoUsuarios) {
         window.OrdoUsuarios.mostrar(zona);
       }
+      if (numero === '4' && window.OrdoCapitulo4) {
+        window.OrdoCapitulo4.mostrar(zona, {departamento: codigo, modo: esCalidad ? 'calidad' : 'visor'});
+      }
     });
 
     boton.setAttribute('aria-pressed', 'false');

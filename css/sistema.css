@@ -52,3 +52,7 @@ button,a{font:inherit}
  .marca img{width:220px}
  #menu{grid-template-columns:1fr}
 }
+
+/* Acreditación institucional, común a todos los departamentos */
+.aviso-certificacion{margin:10px 0 0;padding:0;width:100%;}
+.aviso-certificacion img{display:block;width:100%;height:auto;object-fit:contain;}

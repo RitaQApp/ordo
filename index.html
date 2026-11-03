@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="ordo · Sistema de Gestión de la Calidad">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>ordo · Acceso</title>
+  <link rel="stylesheet" href="css/acceso.css">
+</head>
+<body>
+  <main class="acceso-layout">
+    <aside class="presentacion" aria-label="Presentación de ordo">
+      <div class="presentacion-content">
+        <img class="ordo-banner" src="assets/ordo-banner.png" alt="ordo by Ritaq.es">
+        <div class="subrayado" aria-hidden="true"></div>
+        <h1>Sistema de Gestión<br>de la Calidad</h1>
+        <p class="norma">ISO 9001:2026</p>
+        <img class="lifelearning" src="assets/lifelearning.png" alt="LifeLearning consultoría">
+      </div>
+      <div class="presentacion-pie">ordo <span>·</span> by Ritaq.es</div>
+    </aside>
+    <section class="acceso" aria-labelledby="titulo-acceso">
+      <div class="formulario-wrap">
+        <p class="supratitulo">ordo</p>
+        <h2 id="titulo-acceso">Acceso</h2>
+        <div class="regla" aria-hidden="true"></div>
+        <form id="form-acceso" autocomplete="off" novalidate>
+          <label for="departamento">Usuario</label>
+          <select id="departamento" name="departamento" required>
+            <option value="">Seleccione su departamento</option>
+            <option value="calidad">Calidad</option>
+            <option value="servicios">Servicios Generales</option>
+            <option value="biblioteca">Biblioteca</option>
+            <option value="editorial">Editorial</option>
+            <option value="acompanamiento">Instituto de Acompañamiento</option>
+          </select>
+          <label for="clave">Contraseña</label>
+          <div class="clave-fila">
+            <input id="clave" type="password" name="clave" placeholder="Contraseña" autocomplete="off" spellcheck="false" required>
+            <button id="ver-clave" type="button" aria-controls="clave" aria-pressed="false">VER</button>
+          </div>
+          <button class="entrar" type="submit">ENTRAR</button>
+          <p id="acceso-mensaje" class="mensaje" role="status" aria-live="polite"></p>
+        </form>
+        <nav class="departamentos" aria-label="Seleccionar acceso departamental">
+          <button type="button" class="dpto" data-dpto="calidad" aria-pressed="false">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 3 41 10v13c0 11-7 18-17 22C14 41 7 34 7 23V10L24 3Z"/><path d="m16 24 6 6 11-13"/></svg>
+            <span>Calidad</span>
+          </button>
+          <button type="button" class="dpto" data-dpto="servicios" aria-pressed="false">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M20 4h8l2 6 6 2 6-3 5 7-5 5v7l5 5-5 7-6-3-6 2-2 6h-8l-2-6-6-2-6 3-5-7 5-5v-7l-5-5 5-7 6 3 6-2 2-6Z" transform="translate(2 0) scale(.92)"/><circle cx="24" cy="24" r="8"/></svg>
+            <span>Servicios<br>Generales</span>
+          </button>
+          <button type="button" class="dpto" data-dpto="biblioteca" aria-pressed="false">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 42V10C17 5 10 6 4 8v32c7-3 14-2 20 2Zm0 0V10c7-5 14-4 20-2v32c-7-3-14-2-20 2Z"/><path d="M10 15c4-1 7-1 10 1m8 0c3-2 6-2 10-1"/></svg>
+            <span>Biblioteca</span>
+          </button>
+          <button type="button" class="dpto" data-dpto="editorial" aria-pressed="false">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><path d="m8 13 25-9 8 5-25 10-8-6Zm0 0v9l8 6 25-10V9M8 22l-3 9 12 8 25-10-1-11M5 31l-2 6 13 8 26-10v-6"/></svg>
+            <span>Editorial</span>
+          </button>
+          <button type="button" class="dpto" data-dpto="acompanamiento" aria-pressed="false">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="11" r="7"/><circle cx="9" cy="19" r="5"/><circle cx="39" cy="19" r="5"/><path d="M11 43v-6c0-9 5-14 13-14s13 5 13 14v6M2 40v-7c0-5 4-8 9-8h3M46 40v-7c0-5-4-8-9-8h-3"/></svg>
+            <span>Instituto de<br>Acompañamiento</span>
+          </button>
+        </nav>
+      </div>
+    </section>
+  </main>
+  <script src="js/acceso.js" defer></script>
+</body>
+</html>

@@ -43,7 +43,7 @@ async function route(req,env,actor,url){
   const indata=await parseJSON(req),p={...pick(indata),compartida:indata.tipo==='general',estado:'borrador'};
   if(!valid(p)||p.codigo.length<3)return respond({error:'Datos incorrectos o asignación vacía'},400);
   const id=uuid();try{
-   await env.DB.prepare(`INSERT INTO paquetes (id,codigo,titulo,tipo,departamentos,compartida,revision,fecha,estado,texto,filas) VALUES (?,?,?,?,?,?,?,?,?,?,?)`).bind(id,...values(p)).run();await event(env,id,actor,'alta');
+   await env.DB.prepare(`INSERT INTO paquetes (id,codigo,titulo,tipo,departamentos,compartida,revision,fecha,estado,texto,filas) VALUES (?,?,?,?,?,?,?,?,?,?)`).bind(id,...values(p)).run();await event(env,id,actor,'alta');
    return respond({paquete:await view(env,id)},201);
   }catch(e){if(String(e).includes('UNIQUE'))return respond({error:'Código duplicado'},409);throw e}
  }

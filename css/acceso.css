@@ -1,4 +1,9 @@
-:root{font-family:Arial,Helvetica,sans-serif;color:#063b55;background:#fff;font-synthesis:none}
+/* Familia Técnico original de RITAQ©. Archivos servidos desde el propio proyecto ordo. */
+@font-face{font-family:'Tecnico';src:url('../assets/tecnico_regular.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:'Tecnico';src:url('../assets/tecnico_bold.ttf') format('truetype');font-style:normal;font-weight:700 900;font-display:swap}
+@font-face{font-family:'Tecnico';src:url('../assets/tecnico_regularitalic.ttf') format('truetype');font-style:italic;font-weight:400;font-display:swap}
+@font-face{font-family:'Tecnico';src:url('../assets/tecnico_bolditalic.ttf') format('truetype');font-style:italic;font-weight:700 900;font-display:swap}
+:root{font-family:'Tecnico',sans-serif;color:#063b55;background:#fff;font-synthesis:none}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh}
 button,input,select{font:inherit}
@@ -9,7 +14,7 @@ button{cursor:pointer}
 .ordo-banner{display:block;width:clamp(175px,20vw,310px);height:auto;object-fit:contain;object-position:left center;margin:0 0 44px}
 .subrayado{width:60px;height:4px;background:#00b8e7;margin-bottom:20px}
 h1{font-size:clamp(30px,3vw,49px);font-weight:400;line-height:1.13;letter-spacing:-.04em;margin:0 0 10px}
-.norma{font-family:'Tecnico', 'Arial Black',Arial,sans-serif;font-size:clamp(20px,2.15vw,32px);font-weight:900;letter-spacing:.02em;margin:0 0 15px}
+.norma{font-family:'Tecnico',sans-serif;font-size:clamp(20px,2.15vw,32px);font-weight:700;letter-spacing:.02em;margin:0 0 15px}
 .lifelearning{width:clamp(145px,16vw,235px);height:auto;opacity:.8;mix-blend-mode:screen;align-self:flex-start}
 .presentacion-pie{font-size:15px;color:#e0eaf0}
 .presentacion-pie span{padding:0 5px;color:#87c9dd}

@@ -1,0 +1,30 @@
+/* Complemento acotado al editor 4.2 de ordo. Mantiene la estética original. */
+.pi{font-family:Tecnico,sans-serif}
+.pi .pi-list{border:1px solid #d5e5ea;border-radius:6px;background:white;margin:10px 0 20px;overflow:hidden}
+.pi .pi-list-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:13px 16px;border-bottom:1px solid #e1e9ed;background:#fff}
+.pi .pi-list-row:last-child{border-bottom:0}
+.pi .pi-list-meta{display:flex;flex-direction:column;gap:5px;min-width:0}
+.pi .pi-list-meta small{font-size:13px;color:#607d8b}
+.pi .pi-actions{display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0}
+.pi .pi-actions .c4-btn{font-size:13px;min-height:32px;padding:6px 9px}
+.pi .pi-section-title{font-size:19px;margin:20px 0 10px}
+.pi .pi-editor{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pi .pi-editor .pi-section-title{grid-column:1/-1;margin:0}
+.pi .pi-field{display:flex;flex-direction:column;gap:5px;font-size:14px;font-weight:700;color:#21475c}
+.pi .pi-field input,.pi .pi-field textarea,.pi .pi-field select{font:inherit;font-weight:400;color:#21475c;border:1px solid #a6c0cb;background:white;border-radius:4px;padding:9px;width:100%}
+.pi .pi-field textarea{min-height:85px;resize:vertical}
+.pi .pi-entry{border:1px solid #c9dfe7;background:#fff;border-radius:6px;padding:11px 14px;margin:8px 0}
+.pi .pi-entry summary{font-weight:700;cursor:pointer;padding:4px 0}
+.pi .pi-entry-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:13px 0}
+.pi .pi-modes{display:flex;flex-direction:column;gap:8px;margin:0 0 14px}
+.pi .pi-choice{display:flex;align-items:center;gap:9px}
+.pi .pi-choice input{width:auto}
+.pi .pi-document{margin:12px 0 22px;background:#fff;border:1px solid #cfdee5;border-radius:5px;padding:20px;overflow-x:auto}
+.pi .pi-document h2{margin:0 0 5px}
+.pi .pi-meta{font-size:13px;color:#607c8b}
+.pi .pi-description{white-space:pre-wrap}
+.pi .pi-doc-table{border-collapse:collapse;width:100%;min-width:850px;table-layout:fixed;margin-top:16px}
+.pi .pi-doc-table th,.pi .pi-doc-table td{border:1px solid #bdcfd8;padding:9px;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}
+.pi .pi-doc-table th{background:#edf4f7;color:#183d51}
+.pi [hidden]{display:none!important}
+@media(max-width:800px){.pi .pi-editor,.pi .pi-entry-grid{grid-template-columns:1fr}.pi .pi-list-row{flex-direction:column;align-items:flex-start}.pi .pi-actions{flex-wrap:wrap}}

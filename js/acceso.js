@@ -1,4 +1,4 @@
-/* ordo · Puerta de entrada. Sin credenciales ni navegación activas hasta aprobar la arquitectura. */
+/* ordo · Acceso de pruebas. */
 (() => {
   'use strict';
   const selector = document.getElementById('departamento');
@@ -23,7 +23,7 @@
     e.preventDefault();
     if (!selector.value) { aviso.textContent = 'Selecciona un departamento.'; selector.focus(); return; }
     if (!clave.value) { aviso.textContent = 'Introduce la contraseña.'; clave.focus(); return; }
-    aviso.textContent = 'El acceso se habilitará cuando definamos la arquitectura y la autenticación de ordo.';
-    clave.value = '';
+    if (clave.value !== 'pollo33') { aviso.textContent = 'Contraseña incorrecta.'; clave.value = ''; clave.focus(); return; }
+    window.location.href = 'sistema.html?departamento=' + encodeURIComponent(selector.value);
   });
 })();

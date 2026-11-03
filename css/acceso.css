@@ -1,9 +1,4 @@
-/* Familia Técnico original de RITAQ©. Archivos servidos desde el propio proyecto ordo. */
-@font-face{font-family:'Tecnico';src:url('../assets/tecnico_regular.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}
-@font-face{font-family:'Tecnico';src:url('../assets/tecnico_bold.ttf') format('truetype');font-style:normal;font-weight:700 900;font-display:swap}
-@font-face{font-family:'Tecnico';src:url('../assets/tecnico_regularitalic.ttf') format('truetype');font-style:italic;font-weight:400;font-display:swap}
-@font-face{font-family:'Tecnico';src:url('../assets/tecnico_bolditalic.ttf') format('truetype');font-style:italic;font-weight:700 900;font-display:swap}
-:root{font-family:'Tecnico',sans-serif;color:#063b55;background:#fff;font-synthesis:none}
+:root{font-family:Arial,Helvetica,sans-serif;color:#063b55;background:#fff;font-synthesis:none}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh}
 button,input,select{font:inherit}
@@ -14,7 +9,7 @@ button{cursor:pointer}
 .ordo-banner{display:block;width:clamp(175px,20vw,310px);height:auto;object-fit:contain;object-position:left center;margin:0 0 44px}
 .subrayado{width:60px;height:4px;background:#00b8e7;margin-bottom:20px}
 h1{font-size:clamp(30px,3vw,49px);font-weight:400;line-height:1.13;letter-spacing:-.04em;margin:0 0 10px}
-.norma{font-family:'Tecnico',sans-serif;font-size:clamp(20px,2.15vw,32px);font-weight:700;letter-spacing:.02em;margin:0 0 15px}
+.norma{font-family:'Tecnico', 'Arial Black',Arial,sans-serif;font-size:clamp(20px,2.15vw,32px);font-weight:900;letter-spacing:.02em;margin:0 0 15px}
 .lifelearning{width:clamp(145px,16vw,235px);height:auto;opacity:.8;mix-blend-mode:screen;align-self:flex-start}
 .presentacion-pie{font-size:15px;color:#e0eaf0}
 .presentacion-pie span{padding:0 5px;color:#87c9dd}
@@ -33,12 +28,12 @@ select{height:58px;border:1px solid #00a7d6;border-left:4px solid #00a7d6;color:
 .entrar{height:60px;border:0;background:#056184;color:white;font-size:23px;font-weight:400;letter-spacing:.02em}
 .entrar:hover{background:#084f6a}
 .mensaje{min-height:22px;font-size:14px;color:#586f7c;text-align:center;margin:8px 0 35px}
-.departamentos{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.departamentos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .dpto{background:#fff;color:#084761;border:1.5px solid #008fc8;border-radius:17px;padding:12px 5px;min-height:138px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:9px;transition:background .15s,box-shadow .15s}
 .dpto svg{width:48px;height:48px;fill:none;stroke:#06567a;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
 .dpto span{font-size:clamp(11px,1.03vw,16px);font-weight:600;line-height:1.1;text-align:center}
 .dpto:hover,.dpto[aria-pressed="true"]{background:#e8f5fb;box-shadow:inset 0 0 0 1px #007fb0}
 button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #00b9e8;outline-offset:3px}
 @media(max-width:1100px){.departamentos{gap:6px}.dpto{min-height:115px;padding:10px 4px}.dpto svg{width:38px;height:38px}.dpto span{font-size:12px}}
-@media(max-width:800px){.acceso-layout{grid-template-columns:1fr}.presentacion{min-height:280px;padding:25px;gap:18px}.presentacion-content{padding:0;display:grid;grid-template-columns:auto 1fr;gap:9px 20px;align-items:start}.ordo-banner{width:150px;grid-row:1/4;margin:0}.subrayado{display:none}h1{font-size:26px}.norma{font-size:21px}.lifelearning{width:150px}.presentacion-pie{display:none}.acceso{padding:35px 22px 50px}.formulario-wrap{max-width:690px}.departamentos{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(max-width:800px){.acceso-layout{grid-template-columns:1fr}.presentacion{min-height:280px;padding:25px;gap:18px}.presentacion-content{padding:0;display:grid;grid-template-columns:auto 1fr;gap:9px 20px;align-items:start}.ordo-banner{width:150px;grid-row:1/4;margin:0}.subrayado{display:none}h1{font-size:26px}.norma{font-size:21px}.lifelearning{width:150px}.presentacion-pie{display:none}.acceso{padding:35px 22px 50px}.formulario-wrap{max-width:690px}.departamentos{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:560px){.presentacion-content{display:flex;align-items:flex-start}.ordo-banner{width:145px;margin-bottom:10px}.lifelearning{width:160px}.acceso{padding:30px 14px}.departamentos{grid-template-columns:repeat(3,minmax(0,1fr))}.dpto{min-height:105px}.dpto span{font-size:12px}h2{font-size:52px}}

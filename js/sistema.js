@@ -10,7 +10,8 @@
     servicios: ['Servicios Generales', 'Sistema de Gestión de la Calidad'],
     biblioteca: ['Biblioteca', 'Sistema de Gestión de la Calidad'],
     editorial: ['Editorial', 'Sistema de Gestión de la Calidad'],
-    acompanamiento: ['Instituto de Acompañamiento', 'Sistema de Gestión de la Calidad']
+    acompanamiento: ['Instituto de Acompañamiento', 'Sistema de Gestión de la Calidad'],
+    colegio_mayor: ['Colegio Mayor', 'Sistema de Gestión de la Calidad']
   });
 
   const iconos = {
@@ -40,6 +41,9 @@
   const codigo = valores.get('departamento') || 'calidad';
   const departamento = departamentos[codigo] || departamentos.calidad;
   const esCalidad = codigo === 'calidad';
+  // Restricción visual provisional: la autorización real requiere servidor.
+  const registro = window.OrdoUsuarios?.obtener().find(u => u.id === codigo);
+  const permitido = n => n === '3' ? esCalidad : (!registro || (registro.activo && (registro.permisos || []).includes(n)));
 
   document.getElementById('entorno').textContent = departamento[0];
   document.getElementById('subtitulo').textContent = departamento[1];
@@ -63,11 +67,11 @@
     const boton = document.createElement('button');
     boton.type = 'button';
     boton.className = 'apartado';
-    const restringido = numero === '3' && !esCalidad;
+    const restringido = !permitido(numero);
     if (restringido) {
       boton.disabled = true;
-      boton.title = 'Disponible exclusivamente en Calidad';
-      boton.setAttribute('aria-label', `${numero}. ${nombre}, solo Calidad`);
+      boton.title = numero === '3' ? 'Disponible exclusivamente en Calidad' : 'Apartado deshabilitado para este departamento';
+      boton.setAttribute('aria-label', `${numero}. ${nombre}, sin acceso`);
     } else {
       boton.setAttribute('aria-label', `${numero}. ${nombre}`);
     }
@@ -93,8 +97,10 @@
         b.classList.toggle('activo', b === boton);
         b.setAttribute('aria-pressed', String(b === boton));
       });
-      // Los módulos y sus contenidos aún no están desarrollados.
       zona.replaceChildren();
+      if (numero === '3' && esCalidad && window.OrdoUsuarios) {
+        window.OrdoUsuarios.mostrar(zona);
+      }
     });
 
     boton.setAttribute('aria-pressed', 'false');

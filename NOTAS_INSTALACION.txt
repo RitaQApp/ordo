@@ -1,0 +1,21 @@
+ORDO - Corrección documental 4.1 a 4.4 (04-11-2026)
+
+Archivos que deben reemplazarse:
+js/ordo_editor.js (GitHub Pages)
+cloudflare/worker.js (Cloudflare Worker ordo-api, desplegar aparte)
+
+NO reemplazar js/ordo_api.js, ni los CSS ni los demás ficheros.
+IMPORTANTE: actualizar el Worker además del frontend para permitir guardar
+repetidamente borradores de Contexto en la misma revisión.
+
+Cambios:
+- Histórico con desplegables EN VIGOR, BORRADORES y OBSOLETOS.
+- Registro actual y revisiones antiguas diferenciadas.
+- Guardar apartado en D1 y continuar editando.
+- Guardar documento mantiene la pestaña actual y los bloques.
+- Añadir capítulos y apartados, consultarlos en Vista previa.
+- El pegado de tablas y arrastre de imágenes no se ha modificado.
+
+Pruebas: Chromium con API simulada: pegar TSV, guardar apartado,
+listar borrador, seguir editando, guardar otra vez y verificar tabla.
+NO se ha probado en la D1 real ni se ha desplegado en Cloudflare.

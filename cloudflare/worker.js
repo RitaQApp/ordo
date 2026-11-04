@@ -122,6 +122,7 @@ async function contextoRoute(req,env,actor,url){
   if(old&&old.revision!==record.revision){const used=await env.DB.prepare('SELECT 1 FROM contexto_revisiones WHERE registro_id=? AND revision=?').bind(id,record.revision).first();if(used)return respond({error:'La revisión ya existe en el histórico'},409)}
  }else return respond({error:'Operación no admitida'},405);
  const writes=[];
+ if(action==='estado'&&record.estado==='Obsoleto')writes.push(env.DB.prepare('INSERT INTO contexto_revisiones(registro_id,revision,instantanea) SELECT ?,?,? WHERE EXISTS (SELECT 1 FROM contexto WHERE id=? AND version=?)').bind(id,old.revision+'@obsoleto@'+uuid(),JSON.stringify({...record,archivado:now(),motivo:'Cambio de estado a Obsoleto'}),id,d.version));
  if(old&&old.revision!==record.revision)writes.push(env.DB.prepare('INSERT OR IGNORE INTO contexto_revisiones(registro_id,revision,instantanea) SELECT ?,?,? WHERE EXISTS (SELECT 1 FROM contexto WHERE id=? AND version=?)').bind(id,old.revision,JSON.stringify({...old,archivado:now()}),id,d.version));
  if(old)writes.push(env.DB.prepare('UPDATE contexto SET codigo=?,documento=?,version=version+1 WHERE id=? AND version=?').bind(record.codigo,JSON.stringify(record),id,d.version));
  else writes.push(env.DB.prepare('INSERT INTO contexto(id,apartado,codigo,documento) VALUES (?,?,?,?)').bind(record.id,record.apartado,record.codigo,JSON.stringify(record)));

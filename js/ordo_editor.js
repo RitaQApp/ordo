@@ -10,7 +10,7 @@
  function field(label,value='',type='text'){const wrap=$('label','ode-field'),cap=$('span','',label),input=$(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.value=value??'';input.autocomplete='off';wrap.append(cap,input);return {wrap,input}}
  function notice(root,text){root.append($('p','ode-notice',text))}
  function scaffold(host,id,back){host.replaceChildren();const root=$('section','c4 ode');const h=$('div','ode-heading');h.append($('h1','',id+' · '+nameOf(id)),button('← VOLVER',back));root.append(h);host.append(root);return root}
- function newRecord(id){return {id:key(),apartado:id,codigo:id.replace('.','')+'-',titulo:'',fecha:new Date().toISOString().slice(0,10),revision:'0',estado:id==='4.2'?'borrador':'Vigente',campos:{},asignados:[],mapaImagen:null}}
+ function newRecord(id){return {id:key(),apartado:id,codigo:id.replace('.','')+'-',titulo:'',fecha:new Date().toISOString().slice(0,10),revision:'0',estado:id==='4.2'?'borrador':'Borrador',campos:{},asignados:[],mapaImagen:null}}
  function parseBlocks(r){try{const b=JSON.parse(r.campos?._ordo_bloques||'[]');return Array.isArray(b)?b:[]}catch{return []}}
  function historical(r){const o={...r.campos};delete o._ordo_bloques;return Object.entries(o).filter(([,v])=>v).map(([k,v])=>({title:k,body:v}))}
  const clone=o=>JSON.parse(JSON.stringify(o));
@@ -22,7 +22,7 @@
  function decodePI(p){let extra=[],plain=p.texto||'',meta={};
   if(plain.startsWith(PI_PREFIX)){try{const doc=JSON.parse(plain.slice(PI_PREFIX.length));if(doc.formato===1&&Array.isArray(doc.bloques)){extra=doc.bloques;meta=doc.meta||{};plain=''}}catch{/* mantener contenido heredado */}}
   if(plain)extra.unshift({id:'texto-heredado',kind:'text',title:'Texto introductorio',text:plain});
-  const campos={_ordo_bloques:JSON.stringify([piTable(p.filas),...extra]),_ordo_responsable:meta.responsable||'',_ordo_cambios:meta.cambios||'',_ordo_observaciones:meta.observaciones||''};
+  const campos={_ordo_bloques:JSON.stringify([...((p.filas||[]).length?[piTable(p.filas)]:[]),...extra]),_ordo_responsable:meta.responsable||'',_ordo_cambios:meta.cambios||'',_ordo_observaciones:meta.observaciones||''};
   return {...p,apartado:'4.2',asignados:p.tipo==='general'?DEPS.map(([k])=>k):p.departamentos||[],campos,estado:p.estado, _pi:true};
  }
  async function loadRecords(id){if(id==='4.2'){const d=await request('GET','/api/pi');return (d.paquetes||[]).map(decodePI)}const d=await request('GET','/api/contexto');return (d.registros||[]).filter(r=>r.apartado===id)}
@@ -42,7 +42,7 @@
   const current=$('div','ode-current');const currText=$('div');currText.append($('strong','','VERSIÓN EN VIGOR'),$('span','',isNew?'Nuevo documento':`${original.codigo} · Revisión ${original.revision} · ${original.estado}`));current.append(currText,button('GENERAR PDF',()=>{if(state.tab==='general')refreshMeta();state.tab='preview';render();printPDF()},'ode-print'));root.append(current);
   const tabs=$('div','ode-tabs'),content=$('div','ode-content'),message=$('div','ode-message');root.append(tabs);const actions=$('div','ode-actions');root.append(actions,message,content);
   const inputs={};const makeTab=(id,label)=>{const b=button(label,()=>{if(state.tab==='general')refreshMeta();state.tab=id;render()},'ode-tab');b.dataset.tab=id;tabs.append(b)};
-  [['general','DATOS GENERALES'],['content','CAPÍTULOS Y APARTADOS'],['preview','VISTA PREVIA'],['history','HISTÓRICO DE REVISIONES'],['assign','ASIGNACIONES']].forEach(([id,label])=>makeTab(id,label));
+  [['general','DATOS GENERALES'],['content','CAPÍTULOS Y APARTADOS'],['preview','VISTA PREVIA'],['history','HISTÓRICO Y ASIGNACIONES']].forEach(([id,label])=>makeTab(id,label));
   const uiValue=()=>Object.fromEntries(Object.entries(inputs).map(([k,x])=>[k,x.value]));
   const mark=()=>{state.dirty=true;message.textContent='Cambios pendientes de grabar en Cloudflare.'};
   function refreshMeta(){if(!inputs.codigo)return;Object.assign(state.record,uiValue())}
@@ -56,50 +56,165 @@
       const f=field(label,state.record.campos[k]||'',type);if(type==='textarea')f.wrap.classList.add('ode-wide');f.input.addEventListener('input',()=>{state.record.campos[k]=f.input.value;mark()});grid.append(f.wrap)
     }
     content.append(grid);notice(content,'Cada modificación de contenido vigente requiere una nueva revisión. El histórico se conserva en Cloudflare D1.');}
-  function tabAssignments(){const opt=$('div','ode-option');const general=$('input');general.type='checkbox';general.checked=state.general;general.onchange=()=>{state.general=general.checked;boxes.hidden=general.checked;mark()};opt.append(general,$('span','','DOCUMENTO GENERAL UFV · Visible en todos los servicios'));content.append(opt);const boxes=$('div','ode-deps');boxes.hidden=state.general;DEPS.forEach(([key,label])=>{const row=$('label','ode-option'),x=$('input');x.type='checkbox';x.checked=state.assign.has(key);x.onchange=()=>{if(x.checked)state.assign.add(key);else state.assign.delete(key);mark()};row.append(x,$('span','',label));boxes.append(row)});content.append(boxes);notice(content,id==='4.2'?'Las asignaciones se guardan sin modificar la revisión.':'Las asignaciones se guardan con el documento y, si ya está vigente, el servidor actual requiere nueva revisión.')}
-  function blockEditor(block,index){const card=$('div','ode-block'),header=$('div','ode-block-head'),name=$('strong','',`Bloque ${index+1} · ${block.kind.toUpperCase()}`);header.append(name,button('SUBIR',()=>move(index,-1)),button('BAJAR',()=>move(index,1)),...(block.id===PI_MAIN?[]:[button('QUITAR',()=>{state.blocks.splice(index,1);mark();render()},'ode-danger')]));card.append(header);
+  function tabAssignments(){const opt=$('div','ode-option');const general=$('input');general.type='checkbox';general.checked=state.general;
+    general.onchange=()=>{state.general=general.checked;boxes.hidden=general.checked;mark()};
+    opt.append(general,$('span','','GENERAL UFV · Visible en todos los servicios tras aprobar'));content.append(opt);
+    const boxes=$('div','ode-deps');boxes.hidden=state.general;
+    DEPS.forEach(([code,name])=>{const row=$('label','ode-option'),el=$('input');el.type='checkbox';el.checked=state.assign.has(code);el.onchange=()=>{if(el.checked)state.assign.add(code);else state.assign.delete(code);mark()};row.append(el,$('span','',name));boxes.append(row)});content.append(boxes);
+    notice(content,'Las asignaciones se aplican al aprobar el paquete completo. Los borradores todavía no se distribuyen.');
+  }
+  function parseSeparated(raw,delimiter){
+    const out=[], row=[];let value='',quoted=false;
+    for(let i=0;i<raw.length;i++){const c=raw[i];
+      if(c==='"'){if(quoted&&raw[i+1]==='"'){value+='"';i++}else quoted=!quoted}
+      else if(!quoted&&(c===delimiter||c==='\n'||c==='\r')){row.push(value);value='';if(c!==delimiter){out.push(row.splice(0));if(c==='\r'&&raw[i+1]==='\n')i++}}
+      else value+=c;
+    }
+    if(value||row.length){row.push(value);out.push(row)}
+    while(out.length&&out[out.length-1].every(v=>!v.trim()))out.pop();
+    const max=Math.max(0,...out.map(r=>r.length));return out.map(r=>Array.from({length:max},(_,i)=>r[i]||''));
+  }
+  function readImportedTable(raw,html){
+    if(html){const doc=new DOMParser().parseFromString(html,'text/html');const tbl=doc.querySelector('table');if(tbl){const matrix=Array.from(tbl.rows).map(tr=>Array.from(tr.cells).map(td=>td.textContent.trim()));if(matrix.length)return matrix}}
+    const trimmed=(raw||'').trim();if(!trimmed)return [];
+    return parseSeparated(trimmed,trimmed.includes('\t')?'\t':(trimmed.includes(';')?';':','));
+  }
+  function loadTableMatrix(block,matrix){
+    if(!matrix.length)throw Error('La tabla no contiene datos.');
+    if(matrix.length>501||matrix.some(r=>r.length>10))throw Error('La tabla supera 500 filas o 10 columnas. Divídela.');
+    if(block.id===PI_MAIN){
+      // Mantener los encabezados estándar del registro histórico de partes interesadas.
+      if(matrix[0].length!==PI_KEYS.length)throw Error('La tabla de partes interesadas requiere exactamente 6 columnas.');
+      block.cols=[...PI_LABELS];block.rows=matrix.slice(matrix[0].some(x=>/grupo|expectativa|inter[eé]s/i.test(x))?1:0).map(r=>r.slice(0,6));
+    }else{
+      block.cols=matrix[0].map((x,i)=>x||'Columna '+(i+1));block.rows=matrix.slice(1);
+    }
+    mark();render();message.textContent='Tabla incorporada. Comprueba los encabezados antes de grabar.';
+  }
+  async function readXlsx(file){
+    if(file.size>1500000)throw Error('El archivo Excel supera 1,5 MB. Copia y pega la tabla o exporta a CSV.');
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    const u16=i=>bytes[i]|(bytes[i+1]<<8),u32=i=>(bytes[i]|(bytes[i+1]<<8)|(bytes[i+2]<<16)|(bytes[i+3]<<24))>>>0;
+    let end=-1;for(let i=bytes.length-22;i>=Math.max(0,bytes.length-66000);i--)if(u32(i)===0x06054b50){end=i;break}
+    if(end<0)throw Error('No es un archivo XLSX válido.');
+    let pos=u32(end+16);const files=new Map();
+    for(let n=0;n<u16(end+10);n++){
+      if(u32(pos)!==0x02014b50)break;
+      const method=u16(pos+10),size=u32(pos+20),length=u16(pos+28),extra=u16(pos+30),comment=u16(pos+32),offset=u32(pos+42);
+      const filename=new TextDecoder().decode(bytes.slice(pos+46,pos+46+length));files.set(filename,{method,size,offset});
+      pos+=46+length+extra+comment;
+    }
+    async function xml(path){const entry=files.get(path);if(!entry)return null;
+      const o=entry.offset;if(u32(o)!==0x04034b50)throw Error('Archivo XLSX dañado.');
+      const start=o+30+u16(o+26)+u16(o+28);const compressed=bytes.slice(start,start+entry.size);
+      let raw;
+      if(entry.method===0)raw=compressed;
+      else if(entry.method===8){if(!('DecompressionStream' in window))throw Error('Este navegador no admite importar XLSX. Pega las celdas desde Excel.');
+        raw=new Uint8Array(await new Response(new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+      }else throw Error('Compresión XLSX no admitida.');
+      return new DOMParser().parseFromString(new TextDecoder().decode(raw),'application/xml');
+    }
+    const shared=await xml('xl/sharedStrings.xml');const strings=shared?Array.from(shared.getElementsByTagName('si')).map(x=>Array.from(x.getElementsByTagName('t')).map(t=>t.textContent).join('')):[];
+    const sheet=await xml('xl/worksheets/sheet1.xml');if(!sheet)throw Error('No encuentro la primera hoja del Excel.');
+    const rows=[];for(const r of Array.from(sheet.getElementsByTagName('row')).slice(0,501)){
+      const arr=[];for(const cell of Array.from(r.getElementsByTagName('c'))){
+        const ref=cell.getAttribute('r')||'A1';const letters=ref.match(/^[A-Z]+/i)?.[0]||'A';let idx=0;for(const ch of letters.toUpperCase())idx=idx*26+ch.charCodeAt(0)-64;idx--;
+        if(idx>=10)throw Error('La tabla Excel supera 10 columnas.');
+        const raw=cell.getElementsByTagName('v')[0]?.textContent||'';arr[idx]=cell.getAttribute('t')==='s'?strings[Number(raw)]||'':cell.getAttribute('t')==='inlineStr'?Array.from(cell.getElementsByTagName('t')).map(x=>x.textContent).join(''):raw;
+      }
+      rows.push(arr.map(v=>String(v??'')));
+    }
+    return rows.filter(r=>r.some(v=>v.trim()));
+  }
+  async function importTableFile(block,file){
+    if(!file)return;
+    if(/\.xlsx$/i.test(file.name)){loadTableMatrix(block,await readXlsx(file));return;}
+    if(!/\.(csv|tsv|txt|html?|htm)$/i.test(file.name))throw Error('Arrastra Excel XLSX, CSV, TSV o HTML, o pega una tabla copiada.');
+    if(file.size>350000)throw Error('Archivo demasiado grande para el editor.');
+    const raw=await file.text();loadTableMatrix(block,readImportedTable(raw,/\.html?$/i.test(file.name)?raw:null));
+  }
+  function tableImportArea(block){
+    const box=$('div','ode-drop');box.tabIndex=0;box.setAttribute('role','group');
+    box.append($('strong','','PEGAR O ARRASTRAR TABLA'),$('small','','Pega celdas desde Excel o una tabla web (Ctrl/Cmd+V). Arrastra XLSX, CSV, TSV, HTML o texto tabulado.'));
+    const file=$('input');file.type='file';file.accept='.xlsx,.csv,.tsv,.txt,.html,.htm,text/csv,text/tab-separated-values,text/html';file.setAttribute('aria-label','Elegir archivo de tabla');
+    file.onchange=()=>importTableFile(block,file.files?.[0]).catch(e=>{message.textContent=e.message});box.append(file);
+    box.addEventListener('paste',ev=>{const matrix=readImportedTable(ev.clipboardData?.getData('text/plain'),ev.clipboardData?.getData('text/html'));if(matrix.length){ev.preventDefault();try{loadTableMatrix(block,matrix)}catch(e){message.textContent=e.message}}});
+    box.addEventListener('dragover',ev=>{ev.preventDefault();box.classList.add('ode-drag')});
+    box.addEventListener('dragleave',()=>box.classList.remove('ode-drag'));
+    box.addEventListener('drop',ev=>{ev.preventDefault();box.classList.remove('ode-drag');const f=ev.dataTransfer?.files?.[0];
+      if(f)importTableFile(block,f).catch(e=>{message.textContent=e.message});
+      else{const raw=ev.dataTransfer?.getData('text/plain'),html=ev.dataTransfer?.getData('text/html');try{loadTableMatrix(block,readImportedTable(raw,html))}catch(e){message.textContent=e.message}}
+    });return box;
+  }
+  function blockEditor(block,index){const card=$('div','ode-block'),header=$('div','ode-block-head'),name=$('strong','',`Bloque ${index+1} · ${block.kind.toUpperCase()}`);header.append(name,button('SUBIR',()=>move(index,-1)),button('BAJAR',()=>move(index,1)),button('QUITAR',()=>{state.blocks.splice(index,1);mark();render()},'ode-danger'));card.append(header);
    const title=field('Título del apartado',block.title);title.input.oninput=()=>{block.title=title.input.value;mark()};card.append(title.wrap);
    if(block.kind==='text'||block.kind==='mixed'){const f=field('Texto',block.text||'','textarea');f.input.oninput=()=>{block.text=f.input.value;mark()};card.append(f.wrap)}
-   if(block.kind==='table'||block.kind==='mixed'){const tb=$('div','ode-tabletools');const label=field('Encabezados de columnas (separados por ;)',(block.cols||['Columna 1','Columna 2']).join(';'));if(block.id===PI_MAIN)label.input.readOnly=true;label.input.oninput=()=>{block.cols=label.input.value.split(';').map(x=>x.trim()).filter(Boolean).slice(0,10);mark()};tb.append(label.wrap);(block.rows||[]).forEach((r,i)=>{const row=$('div','ode-row');const f=field('Fila '+(i+1)+' · celdas separadas por ;',r.join(';'));f.input.oninput=()=>{block.rows[i]=f.input.value.split(';');mark()};row.append(f.wrap,button('×',()=>{block.rows.splice(i,1);mark();render()}));tb.append(row)});tb.append(button('+ AÑADIR FILA',()=>{block.rows=block.rows||[];block.rows.push([]);mark();render()}));card.append(tb)}
+   if(block.kind==='table'||block.kind==='mixed'){const tb=$('div','ode-tabletools');const label=field('Encabezados de columnas (separados por ;)',(block.cols||['Columna 1','Columna 2']).join(';'));if(block.id===PI_MAIN)label.input.readOnly=true;label.input.oninput=()=>{block.cols=label.input.value.split(';').map(x=>x.trim()).filter(Boolean).slice(0,10);mark()};tb.append(label.wrap);(block.rows||[]).forEach((r,i)=>{const row=$('div','ode-row');const f=field('Fila '+(i+1)+' · celdas separadas por ;',r.join(';'));f.input.oninput=()=>{block.rows[i]=f.input.value.split(';');mark()};row.append(f.wrap,button('×',()=>{block.rows.splice(i,1);mark();render()}));tb.append(row)});tb.append(button('+ AÑADIR FILA',()=>{block.rows=block.rows||[];block.rows.push([]);mark();render()}));tb.prepend(tableImportArea(block));card.append(tb)}
    if(block.kind==='image'||block.kind==='mixed'){const file=$('input');file.type='file';file.accept='image/png,image/jpeg,image/webp';file.onchange=()=>loadImage(file,block);const hint=$('p','ode-hint','Imagen comprimida para respetar el límite actual de la API. Los originales grandes requerirán un repositorio de archivos centralizado.');card.append(file,hint);if(block.image){const im=$('img','ode-preview-img');im.src=block.image;im.alt=block.title||'Imagen';card.append(im,button('QUITAR IMAGEN',()=>{block.image='';mark();render()}))}}
    return card}
   function move(i,dir){const j=i+dir;if(j<0||j>=state.blocks.length)return;[state.blocks[i],state.blocks[j]]=[state.blocks[j],state.blocks[i]];mark();render()}
   async function loadImage(file,block){const f=file.files[0];if(!f)return;if(!['image/png','image/jpeg','image/webp'].includes(f.type)){message.textContent='Formato de imagen no admitido';return}
    const bitmap=await createImageBitmap(f);const canvas=document.createElement('canvas');const scale=Math.min(1,420/Math.max(bitmap.width,bitmap.height));canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();let image='';for(const q of [.65,.45,.3,.18]){image=canvas.toDataURL('image/jpeg',q);if(image.length<18000)break}if(image.length>18000){message.textContent='La imagen supera el tamaño admitido por esta versión del editor. No se ha incorporado.';return}block.image=image;mark();render()}
-  function tabContent(){if(id==='4.2'&&!state.blocks.some(b=>b.id===PI_MAIN))state.blocks.unshift(piTable([]));const options=$('div','ode-actions');[['text','+ TEXTO'],['table','+ TABLA'],['image','+ IMAGEN'],['mixed','+ COMBINADO']].forEach(([kind,title])=>options.append(button(title,()=>{state.blocks.push({id:key(),kind,title:'',text:'',cols:['Columna 1','Columna 2'],rows:[],image:''});mark();render()},'ode-primary')));content.append(options);
+  function tabContent(){const options=$('div','ode-actions');[['text','+ TEXTO'],['table','+ TABLA'],['image','+ IMAGEN'],['mixed','+ COMBINADO']].forEach(([kind,title])=>options.append(button(title,()=>{state.blocks.push({id:key(),kind,title:'',text:'',cols:['Columna 1','Columna 2'],rows:[],image:''});mark();render()},'ode-primary')));content.append(options);
    const old=historical(state.record);if(old.length&&!state.blocks.length){const legacy=$('details','ode-legacy');legacy.append($('summary','','INFORMACIÓN YA EXISTENTE · Conservada sin alteraciones'));old.forEach(x=>{legacy.append($('strong','',x.title),$('p','',x.body))});content.append(legacy)}
    state.blocks.forEach((block,i)=>content.append(blockEditor(block,i)));
    if(id==='4.4'){const box=$('div','ode-block');box.append($('h3','','Mapa gráfico de procesos'));const file=$('input');file.type='file';file.accept='image/png,image/jpeg,image/webp';file.onchange=async()=>{const f=file.files[0];if(!f)return;if(f.size>700000){message.textContent='Para el mapa, el archivo debe ser inferior a 700 kB.';return}const reader=new FileReader();reader.onload=()=>{state.mapa=reader.result;mark();render()};reader.readAsDataURL(f)};box.append(file);if(state.mapa){const im=$('img','ode-preview-img');im.src=state.mapa;im.alt='Mapa de procesos';box.append(im,button('QUITAR MAPA',()=>{state.mapa=null;mark();render()}))}content.append(box)}}
   function tabPreview(){const paper=$('article','ode-paper');paper.append($('h2','',state.record.titulo||'Sin título'),$('p','',`${state.record.codigo} · Rev. ${state.record.revision}`));for(const b of state.blocks){paper.append($('h3','',b.title||'Apartado'));if(b.text)paper.append($('p','',b.text));if((b.kind==='table'||b.kind==='mixed')&&b.rows?.length){const table=$('table'),tr=$('tr');(b.cols||[]).forEach(v=>tr.append($('th','',v)));table.append(tr);b.rows.forEach(row=>{const line=$('tr');row.forEach(v=>line.append($('td','',v)));table.append(line)});paper.append(table)}if(b.image){const img=$('img','ode-preview-img');img.src=b.image;img.alt=b.title||'Imagen';paper.append(img)}}if(state.mapa){const img=$('img','ode-preview-img');img.src=state.mapa;paper.append(img)}if(id!=='4.2'&&!state.blocks.length){historical(state.record).forEach(x=>{paper.append($('h3','',x.title),$('p','',x.body))})}content.append(paper)}
-  async function tabHistory(){if(isNew){notice(content,'Guarda primero el documento.');return}
-    if(id==='4.2'){notice(content,'Cargando revisiones…');try{const data=await request('GET','/api/pi/'+state.record.id+'/history');content.replaceChildren();showHistory((data.revisiones||[]).map(x=>decodePI(x.instantanea)))}catch(e){content.replaceChildren();notice(content,e.message)};return}
+  async function tabHistory(){
+    const heading=$('h2','','Asignaciones del paquete terminado');content.append(heading);
+    tabAssignments();
+    const control=$('div','ode-actions');content.append(control);
+    if(!isNew){
+      if(id==='4.2'&&state.record.estado==='vigente'){
+        control.append(button('ACTUALIZAR ASIGNACIONES',async()=>{try{await distribute()}catch(e){message.textContent=e.message}},'ode-primary'));
+      }
+      if(id!=='4.2'&&state.record.estado==='Vigente')notice(content,'Para redistribuir un documento vigente, crea una nueva revisión y apruébala.');
+    }
+    if(!isNew&&(state.record.estado==='borrador'||state.record.estado==='Borrador'||state.record.revision!==approvedOriginal.revision)){
+      control.append(button('APROBAR Y ASIGNAR',async()=>{try{await save(true)}catch(e){message.textContent=e.message}},'ode-approve'));
+    }
+    const title=$('h2','','Histórico de revisiones');content.append(title);
+    if(isNew){notice(content,'Graba primero el borrador. Después podrás asignarlo y aprobarlo aquí.');return}
+    if(id==='4.2'){
+      const loading=$('p','ode-notice','Cargando revisiones…');content.append(loading);
+      try{const data=await request('GET','/api/pi/'+state.record.id+'/history');loading.remove();showHistory((data.revisiones||[]).map(x=>decodePI(x.instantanea)))}
+      catch(e){loading.textContent=e.message};return;
+    }
     showHistory(state.record.historial||[]);
   }
   function showHistory(items){if(!items.length){notice(content,'No hay revisiones anteriores.');return}items.slice().reverse().forEach(x=>{const item=$('div','ode-item');item.append($('strong','',`Revisión ${x.revision} · ${x.fecha||''}`));item.append(button('CONSULTAR',()=>{const previous=clone(state.record),previousBlocks=clone(state.blocks);state.record=clone(x);state.blocks=parseBlocks(x);state.tab='preview';render();content.prepend(button('VOLVER A REVISIÓN ACTUAL',()=>{state.record=previous;state.blocks=previousBlocks;state.tab='history';render()}))}));content.append(item)})}
   async function save(approve=false){refreshMeta();const r=state.record;
     if(!r.codigo.trim()||!r.titulo.trim()||!r.revision.trim()||!r.fecha)throw Error('Indica código, título, revisión y fecha.');
-    const dest=state.general?DEPS.map(([k])=>k):[...state.assign];if(!dest.length)throw Error('Selecciona al menos un departamento o marca General UFV.');
+    const dest=state.general?DEPS.map(([k])=>k):[...state.assign];if(approve&&!dest.length)throw Error('Selecciona al menos un departamento antes de aprobar.');
     if(id==='4.2'){
-      const {texto,filas}=serializePI(state.blocks,r);if(approve&&!filas.length)throw Error('Para aprobar, introduce al menos un grupo de interés.');
+      const {texto,filas}=serializePI(state.blocks,r);if(approve&&!filas.length&&!state.blocks.some(b=>b.id!==PI_MAIN&&(b.text||b.image||b.rows?.length)))throw Error('Introduce contenido antes de aprobar.');
       const data={codigo:r.codigo.trim(),titulo:r.titulo.trim(),revision:r.revision.trim(),fecha:r.fecha,texto,filas,aprobar:approve};
       let packet;
-      if(isNew){const created=await request('POST','/api/pi',{...data,tipo:state.general?'general':'especifico',departamentos:state.general?[]:dest});packet=created.paquete;
-        if(approve){const result=await request('PUT','/api/pi/'+packet.id,{...data,version:packet.version});packet=result.paquete;}}
-      else {const old=approvedOriginal;if(old?.estado==='obsoleto')throw Error('El paquete es obsoleto. Reactívalo antes de editar.');
-        if(old?.estado==='vigente'&&r.revision===old.revision)throw Error('Es necesario crear una nueva revisión para modificar un documento vigente.');
-        const result=await request('PUT','/api/pi/'+r.id,{...data,version:r.version});packet=result.paquete;
-        if(old?.tipo!==(state.general?'general':'especifico')||(!state.general&&JSON.stringify(old?.departamentos||[])!==JSON.stringify(dest))){
-          const assigned=await request('PATCH','/api/pi/'+packet.id+'/distribution',{tipo:state.general?'general':'especifico',departamentos:state.general?[]:dest});packet=assigned.paquete;}
+      if(isNew){const created=await request('POST','/api/pi',{...data,aprobar:false,tipo:'especifico',departamentos:[]});packet=created.paquete;}
+      if(!isNew){if(approvedOriginal?.estado==='obsoleto')throw Error('El paquete está obsoleto.');
+        if(approvedOriginal?.estado==='vigente'&&r.revision===approvedOriginal.revision)throw Error('Crea una nueva revisión antes de modificar un documento vigente.');
       }
+      const body={...data,aprobar:approve,version:packet?.version??r.version};
+      if(approve){body.tipo=state.general?'general':'especifico';body.departamentos=state.general?[]:dest;}
+      const result=await request('PUT','/api/pi/'+(packet?.id||r.id),body);packet=result.paquete;
       state.record=decodePI(packet);
     }else{
       const campos={...(r.campos||{})};const serial=JSON.stringify(state.blocks);if(serial.length>30000)throw Error('El contenido supera el límite del servidor (30.000 caracteres). Divide el documento.');
       campos._ordo_bloques=serial;
-      const payload={apartado:id,codigo:r.codigo.trim(),titulo:r.titulo.trim(),fecha:r.fecha,revision:r.revision.trim(),campos,asignados:dest,mapaImagen:id==='4.4'?state.mapa:null};
-      const result=await request(isNew?'POST':'PUT','/api/contexto'+(isNew?'':'/'+r.id),isNew?payload:{...payload,version:r.version});state.record=result.registro;
+      const payload={apartado:id,codigo:r.codigo.trim(),titulo:r.titulo.trim(),fecha:r.fecha,revision:r.revision.trim(),campos,asignados:[],mapaImagen:id==='4.4'?state.mapa:null};
+      let result;
+      if(approve){
+        // El documento se conserva en borrador hasta su aprobación y distribución atómica.
+        if(isNew)throw Error('Graba primero el borrador. Después apruébalo desde Histórico y Asignaciones.');
+        if(r.estado==='Vigente'&&r.revision===approvedOriginal.revision)throw Error('Crea una nueva revisión antes de aprobar cambios.');
+        result=await request('PATCH','/api/contexto/'+r.id+'/estado',{estado:'Vigente',asignados:dest,version:r.version});
+      }else{
+        result=await request(isNew?'POST':'PUT','/api/contexto'+(isNew?'':'/'+r.id),isNew?payload:{...payload,version:r.version});
+      }
+      state.record=result.registro;
     }
     isNew=false;state.blocks=parseBlocks(state.record);state.assign=new Set(state.record.asignados);state.general=id==='4.2'?state.record.tipo==='general':state.record.asignados.length===DEPS.length;
-    Object.assign(approvedOriginal,clone(state.record));state.tab='general';state.dirty=false;render();message.textContent='Documento guardado en Cloudflare D1.';
+    Object.assign(approvedOriginal,clone(state.record));state.tab=approve?'history':'general';state.dirty=false;render();message.textContent=approve?'Documento aprobado y asignado en Cloudflare D1.':'Borrador guardado en Cloudflare D1.';
   }
   async function distribute(){if(isNew)return save();if(id!=='4.2')return save();
     const dest=state.general?[]:[...state.assign];if(!state.general&&!dest.length)throw Error('Selecciona un departamento.');
@@ -116,12 +231,12 @@
     w.document.open();w.document.write(layout+x.outerHTML+'<footer>COPIA NO CONTROLADA</footer></body></html>');w.document.close();w.onload=()=>w.print();
   }
   function render(){tabs.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x.dataset.tab===state.tab));content.replaceChildren();actions.replaceChildren();
-    if(state.tab==='general')tabGeneral();else if(state.tab==='content')tabContent();else if(state.tab==='assign')tabAssignments();else if(state.tab==='preview')tabPreview();else tabHistory();
-    if(['general','content','assign'].includes(state.tab)){
+    if(state.tab==='general')tabGeneral();else if(state.tab==='content')tabContent();else if(state.tab==='preview')tabPreview();else tabHistory();
+    if(['general','content'].includes(state.tab)){
       actions.append(button('GRABAR DOCUMENTO',async()=>{try{await save(false)}catch(e){message.textContent=e.message}},'ode-primary'));
-      if(id==='4.2')actions.append(button('APROBAR DOCUMENTO',async()=>{try{await save(true)}catch(e){message.textContent=e.message}},'ode-approve'));
+      actions.append(button('IR A APROBACIÓN Y ASIGNACIONES',()=>{if(state.tab==='general')refreshMeta();state.tab='history';render()},'ode-approve'));
       if(!isNew){actions.append(button('NUEVA REVISIÓN',()=>{const previous=String(state.record.revision);const guess=/^\d+$/.test(previous)?String(Number(previous)+1):'';state.record.revision=guess;state.tab='general';render();message.textContent='Indica la nueva revisión, edita el contenido y graba.';}));
-        if(state.tab==='assign'&&id==='4.2')actions.append(button('GUARDAR SOLO ASIGNACIONES',async()=>{try{await distribute()}catch(e){message.textContent=e.message}},'ode-primary'));
+
         actions.append(button('PASAR A OBSOLETO',async()=>{try{await obsolete()}catch(e){message.textContent=e.message}},'ode-danger'));
       }
     }

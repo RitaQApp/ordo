@@ -32,7 +32,7 @@ const uid=()=>crypto?.randomUUID?.()||('REG-'+Date.now()+'-'+Math.random().toStr
 const now=()=>new Date().toISOString().slice(0,10);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','"':'&quot;',"'":'&#39;'}[c]));
 const load=()=>registros;
-const save=async record=>{const data=await api(record.version?'PUT':'POST','/api/contexto'+(record.version?'/'+record.id:''),record);return data.registro};
+const save=async record=>{const {historial,...payload}=record;const data=await api(record.version?'PUT':'POST','/api/contexto'+(record.version?'/'+record.id:''),payload);return data.registro};
 const active=r=>r.estado!=='Obsoleto';
 const sec=id=>SECCIONES.find(s=>s.id===id);
 const servicesName=code=>SERVICIOS.find(x=>x[0]===code)?.[1]||code;

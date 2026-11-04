@@ -140,18 +140,59 @@
     if(file.size>350000)throw Error('Archivo demasiado grande para el editor.');
     const raw=await file.text();loadTableMatrix(block,readImportedTable(raw,/\.html?$/i.test(file.name)?raw:null));
   }
+  // La zona enfocada recibe realmente Cmd/Ctrl+V. No se intercepta el pegado
+  // en los campos normales del documento.
+  function makeDropArea(title,help){
+    const area=$('div','ode-drop');area.tabIndex=0;area.setAttribute('role','group');
+    area.setAttribute('aria-label',title+'; selecciona esta zona para pegar con Control o Comando V');
+    area.append($('strong','',title),$('small','',help));
+    const focus=$('button','ode-paste-focus','CLIC AQUÍ PARA PEGAR (⌘/Ctrl+V)');
+    focus.type='button';focus.onclick=()=>area.focus();area.append(focus);
+    area.addEventListener('click',ev=>{if(ev.target===area||ev.target.tagName==='STRONG'||ev.target.tagName==='SMALL')area.focus()});
+    return area;
+  }
   function tableImportArea(block){
-    const box=$('div','ode-drop');box.tabIndex=0;box.setAttribute('role','group');
-    box.append($('strong','','PEGAR O ARRASTRAR TABLA'),$('small','','Pega celdas desde Excel o una tabla web (Ctrl/Cmd+V). Arrastra XLSX, CSV, TSV, HTML o texto tabulado.'));
+    const box=makeDropArea('PEGAR O ARRASTRAR TABLA','Haz clic aquí y pega celdas desde Excel, Numbers o una tabla web. También puedes arrastrar un archivo XLSX, CSV, TSV o HTML.');
     const file=$('input');file.type='file';file.accept='.xlsx,.csv,.tsv,.txt,.html,.htm,text/csv,text/tab-separated-values,text/html';file.setAttribute('aria-label','Elegir archivo de tabla');
     file.onchange=()=>importTableFile(block,file.files?.[0]).catch(e=>{message.textContent=e.message});box.append(file);
-    box.addEventListener('paste',ev=>{const matrix=readImportedTable(ev.clipboardData?.getData('text/plain'),ev.clipboardData?.getData('text/html'));if(matrix.length){ev.preventDefault();try{loadTableMatrix(block,matrix)}catch(e){message.textContent=e.message}}});
-    box.addEventListener('dragover',ev=>{ev.preventDefault();box.classList.add('ode-drag')});
-    box.addEventListener('dragleave',()=>box.classList.remove('ode-drag'));
-    box.addEventListener('drop',ev=>{ev.preventDefault();box.classList.remove('ode-drag');const f=ev.dataTransfer?.files?.[0];
+    function receiveText(dt){
+      const raw=dt?.getData('text/plain')||'',html=dt?.getData('text/html')||'';
+      const matrix=readImportedTable(raw,html);
+      if(!matrix.length)throw Error('No se ha recibido una tabla. Copia primero las celdas de Excel o selecciona un archivo.');
+      loadTableMatrix(block,matrix);
+    }
+    box.addEventListener('paste',ev=>{
+      ev.preventDefault();ev.stopPropagation();
+      try{receiveText(ev.clipboardData)}catch(e){message.textContent=e.message}
+    });
+    box.addEventListener('dragenter',ev=>{ev.preventDefault();box.classList.add('ode-drag')});
+    box.addEventListener('dragover',ev=>{ev.preventDefault();ev.dataTransfer.dropEffect='copy';box.classList.add('ode-drag')});
+    box.addEventListener('dragleave',ev=>{if(!box.contains(ev.relatedTarget))box.classList.remove('ode-drag')});
+    box.addEventListener('drop',ev=>{
+      ev.preventDefault();ev.stopPropagation();box.classList.remove('ode-drag');
+      const f=ev.dataTransfer?.files?.[0];
       if(f)importTableFile(block,f).catch(e=>{message.textContent=e.message});
-      else{const raw=ev.dataTransfer?.getData('text/plain'),html=ev.dataTransfer?.getData('text/html');try{loadTableMatrix(block,readImportedTable(raw,html))}catch(e){message.textContent=e.message}}
-    });return box;
+      else{try{receiveText(ev.dataTransfer)}catch(e){message.textContent=e.message}}
+    });
+    return box;
+  }
+  function imageImportArea(block){
+    const box=makeDropArea('PEGAR O ARRASTRAR IMAGEN','Haz clic aquí y pega una imagen copiada o una captura de pantalla con ⌘/Ctrl+V. Arrastra JPG, PNG o WebP; también puedes seleccionar un archivo.');
+    const file=$('input');file.type='file';file.accept='image/png,image/jpeg,image/webp';file.setAttribute('aria-label','Elegir archivo de imagen');
+    file.onchange=()=>loadImageFile(file.files?.[0],block).catch(e=>{message.textContent=e.message});box.append(file);
+    function receiveImage(dt){
+      const items=Array.from(dt?.items||[]);
+      const image=items.find(i=>i.kind==='file'&&i.type.startsWith('image/'))?.getAsFile()
+        ||Array.from(dt?.files||[]).find(f=>f.type.startsWith('image/'));
+      if(!image){message.textContent='No se ha recibido una imagen. Copia la imagen, no su dirección web, o arrastra un archivo PNG, JPG o WebP.';return}
+      loadImageFile(image,block).catch(e=>{message.textContent=e.message});
+    }
+    box.addEventListener('paste',ev=>{ev.preventDefault();ev.stopPropagation();receiveImage(ev.clipboardData)});
+    box.addEventListener('dragenter',ev=>{ev.preventDefault();box.classList.add('ode-drag')});
+    box.addEventListener('dragover',ev=>{ev.preventDefault();ev.dataTransfer.dropEffect='copy';box.classList.add('ode-drag')});
+    box.addEventListener('dragleave',ev=>{if(!box.contains(ev.relatedTarget))box.classList.remove('ode-drag')});
+    box.addEventListener('drop',ev=>{ev.preventDefault();ev.stopPropagation();box.classList.remove('ode-drag');receiveImage(ev.dataTransfer)});
+    return box;
   }
   function blockEditor(block,index){
    const card=$('div','ode-block'),header=$('div','ode-block-head');
@@ -175,11 +216,21 @@
    const title=field('Título del apartado',block.title);title.input.oninput=()=>{block.title=title.input.value;mark()};card.append(title.wrap);
    if(block.kind==='text'||block.kind==='mixed'){const f=field('Texto',block.text||'','textarea');f.input.oninput=()=>{block.text=f.input.value;mark()};card.append(f.wrap)}
    if(block.kind==='table'||block.kind==='mixed'){const tb=$('div','ode-tabletools');const label=field('Encabezados de columnas (separados por ;)',(block.cols||['Columna 1','Columna 2']).join(';'));if(block.id===PI_MAIN)label.input.readOnly=true;label.input.oninput=()=>{block.cols=label.input.value.split(';').map(x=>x.trim()).filter(Boolean).slice(0,10);mark()};tb.append(label.wrap);(block.rows||[]).forEach((r,i)=>{const row=$('div','ode-row');const f=field('Fila '+(i+1)+' · celdas separadas por ;',r.join(';'));f.input.oninput=()=>{block.rows[i]=f.input.value.split(';');mark()};row.append(f.wrap,button('×',()=>{block.rows.splice(i,1);mark();render()}));tb.append(row)});tb.append(button('+ AÑADIR FILA',()=>{block.rows=block.rows||[];block.rows.push([]);mark();render()}));tb.prepend(tableImportArea(block));card.append(tb)}
-   if(block.kind==='image'||block.kind==='mixed'){const file=$('input');file.type='file';file.accept='image/png,image/jpeg,image/webp';file.onchange=()=>loadImage(file,block);const hint=$('p','ode-hint','Imagen comprimida para respetar el límite actual de la API. Los originales grandes requerirán un repositorio de archivos centralizado.');card.append(file,hint);if(block.image){const im=$('img','ode-preview-img');im.src=block.image;im.alt=block.title||'Imagen';card.append(im,button('QUITAR IMAGEN',()=>{block.image='';mark();render()}))}}
+   if(block.kind==='image'||block.kind==='mixed'){card.append(imageImportArea(block));const hint=$('p','ode-hint','La imagen se reduce para respetar el límite actual de la API.');card.append(hint);if(block.image){const im=$('img','ode-preview-img');im.src=block.image;im.alt=block.title||'Imagen';card.append(im,button('QUITAR IMAGEN',()=>{block.image='';mark();render()}))}}
    return card}
   function move(i,dir){const j=i+dir;if(j<0||j>=state.blocks.length)return;[state.blocks[i],state.blocks[j]]=[state.blocks[j],state.blocks[i]];mark();render()}
-  async function loadImage(file,block){const f=file.files[0];if(!f)return;if(!['image/png','image/jpeg','image/webp'].includes(f.type)){message.textContent='Formato de imagen no admitido';return}
-   const bitmap=await createImageBitmap(f);const canvas=document.createElement('canvas');const scale=Math.min(1,420/Math.max(bitmap.width,bitmap.height));canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();let image='';for(const q of [.65,.45,.3,.18]){image=canvas.toDataURL('image/jpeg',q);if(image.length<18000)break}if(image.length>18000){message.textContent='La imagen supera el tamaño admitido por esta versión del editor. No se ha incorporado.';return}block.image=image;mark();render()}
+  async function loadImageFile(f,block){
+   if(!f)return;
+   if(!['image/png','image/jpeg','image/webp'].includes(f.type))throw Error('Formato no admitido. Utiliza PNG, JPG o WebP.');
+   if(f.size>12000000)throw Error('Imagen demasiado grande. Utiliza un archivo inferior a 12 MB.');
+   const bitmap=await createImageBitmap(f);
+   const canvas=document.createElement('canvas');const scale=Math.min(1,420/Math.max(bitmap.width,bitmap.height));
+   canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+   canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+   let image='';for(const q of [.65,.45,.3,.18]){image=canvas.toDataURL('image/jpeg',q);if(image.length<18000)break}
+   if(image.length>18000)throw Error('La imagen supera el tamaño admitido actualmente por el servidor. Prueba con una imagen más sencilla.');
+   block.image=image;mark();render();message.textContent='Imagen incorporada al bloque. Graba el documento para almacenarla en Cloudflare.';
+  }
   function tabContent(){const options=$('div','ode-actions');[['text','+ TEXTO'],['table','+ TABLA'],['image','+ IMAGEN'],['mixed','+ COMBINADO']].forEach(([kind,title])=>options.append(button(title,()=>{state.blocks.push({id:key(),kind,title:'',text:'',cols:['Columna 1','Columna 2'],rows:[],image:''});mark();render()},'ode-primary')));content.append(options);
    const old=historical(state.record);if(old.length&&!state.blocks.length){const legacy=$('details','ode-legacy');legacy.append($('summary','','INFORMACIÓN YA EXISTENTE · Conservada sin alteraciones'));old.forEach(x=>{legacy.append($('strong','',x.title),$('p','',x.body))});content.append(legacy)}
    state.blocks.forEach((block,i)=>content.append(blockEditor(block,i)));

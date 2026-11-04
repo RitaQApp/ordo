@@ -38,7 +38,8 @@
   ];
 
   const valores = new URLSearchParams(location.search);
-  const codigo = valores.get('departamento') || 'calidad';
+  const codigo = window.OrdoCentral?.department;
+  if (!codigo) { location.replace('index.html'); return; }
   const departamento = departamentos[codigo] || departamentos.calidad;
   const esCalidad = codigo === 'calidad';
   // Restricción visual provisional: la autorización real requiere servidor.

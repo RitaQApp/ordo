@@ -140,58 +140,61 @@
     if(file.size>350000)throw Error('Archivo demasiado grande para el editor.');
     const raw=await file.text();loadTableMatrix(block,readImportedTable(raw,/\.html?$/i.test(file.name)?raw:null));
   }
-  // La zona enfocada recibe realmente Cmd/Ctrl+V. No se intercepta el pegado
-  // en los campos normales del documento.
+  // Zonas de captura: se pega directamente sobre la superficie, sin botón intermedio.
+  // contenteditable garantiza que el navegador permita el pegado al tener foco editable.
   function makeDropArea(title,help){
-    const area=$('div','ode-drop');area.tabIndex=0;area.setAttribute('role','group');
-    area.setAttribute('aria-label',title+'; selecciona esta zona para pegar con Control o Comando V');
-    area.append($('strong','',title),$('small','',help));
-    const focus=$('button','ode-paste-focus','CLIC AQUÍ PARA PEGAR (⌘/Ctrl+V)');
-    focus.type='button';focus.onclick=()=>area.focus();area.append(focus);
-    area.addEventListener('click',ev=>{if(ev.target===area||ev.target.tagName==='STRONG'||ev.target.tagName==='SMALL')area.focus()});
+    const area=$('div','ode-drop');
+    area.tabIndex=0;
+    area.setAttribute('contenteditable','true');
+    area.setAttribute('role','textbox');
+    area.setAttribute('aria-multiline','false');
+    area.setAttribute('spellcheck','false');
+    area.setAttribute('aria-label',title+'. Haz clic en esta zona y pega con Comando o Control V, o arrastra aquí.');
+    area.dataset.placeholder=title+' · SOLTAR AQUÍ O PEGAR (⌘/Ctrl+V)';
+    // Las instrucciones se dibujan con CSS, no como nodos editables.
+    area.title=help;
+    area.addEventListener('beforeinput',ev=>{
+      if(ev.inputType==='insertFromPaste'||ev.inputType==='insertFromDrop')ev.preventDefault();
+    });
+    area.addEventListener('input',()=>{area.replaceChildren();});
     return area;
   }
+  function attachDropEvents(area,handler){
+    let depth=0;
+    area.addEventListener('dragenter',ev=>{ev.preventDefault();depth++;area.classList.add('ode-drag')});
+    area.addEventListener('dragover',ev=>{ev.preventDefault();if(ev.dataTransfer)ev.dataTransfer.dropEffect='copy';area.classList.add('ode-drag')});
+    area.addEventListener('dragleave',ev=>{ev.preventDefault();depth=Math.max(0,depth-1);if(depth===0)area.classList.remove('ode-drag')});
+    area.addEventListener('drop',async ev=>{
+      ev.preventDefault();ev.stopPropagation();depth=0;area.classList.remove('ode-drag');
+      try{await handler(ev.dataTransfer)}catch(e){message.textContent=e.message}
+    });
+  }
   function tableImportArea(block){
-    const box=makeDropArea('PEGAR O ARRASTRAR TABLA','Haz clic aquí y pega celdas desde Excel, Numbers o una tabla web. También puedes arrastrar un archivo XLSX, CSV, TSV o HTML.');
-    const file=$('input');file.type='file';file.accept='.xlsx,.csv,.tsv,.txt,.html,.htm,text/csv,text/tab-separated-values,text/html';file.setAttribute('aria-label','Elegir archivo de tabla');
-    file.onchange=()=>importTableFile(block,file.files?.[0]).catch(e=>{message.textContent=e.message});box.append(file);
-    function receiveText(dt){
-      const raw=dt?.getData('text/plain')||'',html=dt?.getData('text/html')||'';
-      const matrix=readImportedTable(raw,html);
-      if(!matrix.length)throw Error('No se ha recibido una tabla. Copia primero las celdas de Excel o selecciona un archivo.');
+    const box=makeDropArea('TABLA','Arrastra aquí un XLSX, CSV, TSV, HTML o copia las celdas de Excel, Numbers o una tabla web y pega sobre esta zona.');
+    const receive=async dt=>{
+      const files=Array.from(dt?.files||[]);
+      if(files.length){await importTableFile(block,files[0]);return}
+      const html=dt?.getData('text/html')||'';
+      const plain=dt?.getData('text/plain')||'';
+      const matrix=readImportedTable(plain,html);
+      if(!matrix.length)throw Error('No hay tabla en el portapapeles. Copia las celdas o arrastra el archivo sobre la zona.');
       loadTableMatrix(block,matrix);
-    }
-    box.addEventListener('paste',ev=>{
-      ev.preventDefault();ev.stopPropagation();
-      try{receiveText(ev.clipboardData)}catch(e){message.textContent=e.message}
-    });
-    box.addEventListener('dragenter',ev=>{ev.preventDefault();box.classList.add('ode-drag')});
-    box.addEventListener('dragover',ev=>{ev.preventDefault();ev.dataTransfer.dropEffect='copy';box.classList.add('ode-drag')});
-    box.addEventListener('dragleave',ev=>{if(!box.contains(ev.relatedTarget))box.classList.remove('ode-drag')});
-    box.addEventListener('drop',ev=>{
-      ev.preventDefault();ev.stopPropagation();box.classList.remove('ode-drag');
-      const f=ev.dataTransfer?.files?.[0];
-      if(f)importTableFile(block,f).catch(e=>{message.textContent=e.message});
-      else{try{receiveText(ev.dataTransfer)}catch(e){message.textContent=e.message}}
-    });
+    };
+    box.addEventListener('paste',async ev=>{ev.preventDefault();ev.stopPropagation();try{await receive(ev.clipboardData)}catch(e){message.textContent=e.message}});
+    attachDropEvents(box,receive);
     return box;
   }
   function imageImportArea(block){
-    const box=makeDropArea('PEGAR O ARRASTRAR IMAGEN','Haz clic aquí y pega una imagen copiada o una captura de pantalla con ⌘/Ctrl+V. Arrastra JPG, PNG o WebP; también puedes seleccionar un archivo.');
-    const file=$('input');file.type='file';file.accept='image/png,image/jpeg,image/webp';file.setAttribute('aria-label','Elegir archivo de imagen');
-    file.onchange=()=>loadImageFile(file.files?.[0],block).catch(e=>{message.textContent=e.message});box.append(file);
-    function receiveImage(dt){
+    const box=makeDropArea('IMAGEN','Arrastra aquí una imagen PNG, JPG o WebP, o copia una imagen y pégala directamente sobre esta zona.');
+    const receive=async dt=>{
       const items=Array.from(dt?.items||[]);
-      const image=items.find(i=>i.kind==='file'&&i.type.startsWith('image/'))?.getAsFile()
+      const f=items.find(i=>i.kind==='file'&&i.type.startsWith('image/'))?.getAsFile()
         ||Array.from(dt?.files||[]).find(f=>f.type.startsWith('image/'));
-      if(!image){message.textContent='No se ha recibido una imagen. Copia la imagen, no su dirección web, o arrastra un archivo PNG, JPG o WebP.';return}
-      loadImageFile(image,block).catch(e=>{message.textContent=e.message});
-    }
-    box.addEventListener('paste',ev=>{ev.preventDefault();ev.stopPropagation();receiveImage(ev.clipboardData)});
-    box.addEventListener('dragenter',ev=>{ev.preventDefault();box.classList.add('ode-drag')});
-    box.addEventListener('dragover',ev=>{ev.preventDefault();ev.dataTransfer.dropEffect='copy';box.classList.add('ode-drag')});
-    box.addEventListener('dragleave',ev=>{if(!box.contains(ev.relatedTarget))box.classList.remove('ode-drag')});
-    box.addEventListener('drop',ev=>{ev.preventDefault();ev.stopPropagation();box.classList.remove('ode-drag');receiveImage(ev.dataTransfer)});
+      if(!f)throw Error('No hay una imagen en el portapapeles. Copia la imagen original o arrastra PNG/JPG/WebP.');
+      await loadImageFile(f,block);
+    };
+    box.addEventListener('paste',async ev=>{ev.preventDefault();ev.stopPropagation();try{await receive(ev.clipboardData)}catch(e){message.textContent=e.message}});
+    attachDropEvents(box,receive);
     return box;
   }
   function blockEditor(block,index){

@@ -32,3 +32,19 @@ CREATE TABLE IF NOT EXISTS eventos (
 );
 CREATE INDEX IF NOT EXISTS idx_paquetes_estado ON paquetes(estado);
 CREATE INDEX IF NOT EXISTS idx_revisiones_paquete ON revisiones(paquete_id);
+
+CREATE TABLE IF NOT EXISTS contexto (
+ id TEXT PRIMARY KEY,
+ apartado TEXT NOT NULL CHECK(apartado IN ('4.1','4.3','4.4')),
+ codigo TEXT NOT NULL COLLATE NOCASE,
+ documento TEXT NOT NULL,
+ version INTEGER NOT NULL DEFAULT 1,
+ UNIQUE(apartado,codigo)
+);
+CREATE TABLE IF NOT EXISTS contexto_revisiones (
+ registro_id TEXT NOT NULL REFERENCES contexto(id),
+ revision TEXT NOT NULL,
+ instantanea TEXT NOT NULL,
+ archivado TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(registro_id,revision)
+);

@@ -7,6 +7,6 @@
     "FRONTEND_ORIGIN": "https://ritaqapp.github.io"
   },
   "d1_databases": [
-    { "binding": "DB", "database_name": "ordo", "database_id": "SUSTITUIR_POR_ID_REAL_DE_D1" }
+    { "binding": "DB", "database_name": "ordo", "jurisdiction": "eu", "database_id": "c4d6ee5d-2d9f-4535-9edf-0c3f027c232d" }
   ]
 }

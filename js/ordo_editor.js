@@ -4,7 +4,14 @@
  const DEPS=[['servicios','Servicios Generales'],['biblioteca','Biblioteca'],['editorial','Editorial'],['acompanamiento','Instituto de Acompañamiento'],['colegio_mayor','Colegio Mayor']];
  const $=(tag,cls='',value)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(value!==undefined)el.textContent=value;return el};
  const button=(label,click,cls='')=>{const el=$('button','ode-button '+cls,label);el.type='button';el.onclick=()=>Promise.resolve(click()).catch(e=>alert(e.message));return el};
- const key=()=>crypto.randomUUID();
+ const key=()=>{
+   // Los identificadores de bloques no son credenciales: evitar que falle el editor si randomUUID no está disponible.
+   if(typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function')return crypto.randomUUID();
+   const bytes=new Uint8Array(16);
+   if(typeof crypto!=='undefined'&&typeof crypto.getRandomValues==='function')crypto.getRandomValues(bytes);
+   else for(let i=0;i<bytes.length;i++)bytes[i]=Math.floor(Math.random()*256);
+   return 'bloque-'+Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+ };
  const request=(method,path,data)=>window.OrdoAPI.request(method,path,data);
  const nameOf=id=>({'4.1':'Contexto interno y externo','4.2':'Partes interesadas','4.3':'Alcance del Sistema','4.4':'Mapa e interacción de procesos'})[id]||id;
  function field(label,value='',type='text'){const wrap=$('label','ode-field'),cap=$('span','',label),input=$(type==='textarea'?'textarea':'input');if(type!=='textarea')input.type=type;input.value=value??'';input.autocomplete='off';wrap.append(cap,input);return {wrap,input}}
@@ -146,7 +153,25 @@
       else{const raw=ev.dataTransfer?.getData('text/plain'),html=ev.dataTransfer?.getData('text/html');try{loadTableMatrix(block,readImportedTable(raw,html))}catch(e){message.textContent=e.message}}
     });return box;
   }
-  function blockEditor(block,index){const card=$('div','ode-block'),header=$('div','ode-block-head'),name=$('strong','',`Bloque ${index+1} · ${block.kind.toUpperCase()}`);header.append(name,button('SUBIR',()=>move(index,-1)),button('BAJAR',()=>move(index,1)),button('QUITAR',()=>{state.blocks.splice(index,1);mark();render()},'ode-danger'));card.append(header);
+  function blockEditor(block,index){
+   const card=$('div','ode-block'),header=$('div','ode-block-head');
+   const types=[['text','TEXTO'],['table','TABLA'],['image','IMAGEN'],['mixed','COMBINADO']];
+   const name=$('strong','',`Bloque ${index+1}`),selector=$('select','ode-block-type');
+   selector.setAttribute('aria-label',`Tipo de contenido del bloque ${index+1}`);
+   types.forEach(([value,label])=>{const option=$('option','',label);option.value=value;selector.append(option)});
+   selector.value=types.some(([value])=>value===block.kind)?block.kind:'text';
+   selector.onchange=()=>{
+     // La tabla histórica PI se conserva como un bloque normal si deja de ser una tabla.
+     // Se conservan texto, filas e imagen al cambiar de modalidad, para recuperarlos al volver.
+     if(block.id===PI_MAIN&&selector.value!=='table'&&selector.value!=='mixed')block.id=key();
+     block.kind=selector.value;
+     block.cols=block.cols||['Columna 1','Columna 2'];
+     block.rows=block.rows||[];
+     block.text=block.text||'';
+     block.image=block.image||'';
+     mark();render();
+   };
+   header.append(name,selector,button('SUBIR',()=>move(index,-1)),button('BAJAR',()=>move(index,1)),button('QUITAR',()=>{state.blocks.splice(index,1);mark();render()},'ode-danger'));card.append(header);
    const title=field('Título del apartado',block.title);title.input.oninput=()=>{block.title=title.input.value;mark()};card.append(title.wrap);
    if(block.kind==='text'||block.kind==='mixed'){const f=field('Texto',block.text||'','textarea');f.input.oninput=()=>{block.text=f.input.value;mark()};card.append(f.wrap)}
    if(block.kind==='table'||block.kind==='mixed'){const tb=$('div','ode-tabletools');const label=field('Encabezados de columnas (separados por ;)',(block.cols||['Columna 1','Columna 2']).join(';'));if(block.id===PI_MAIN)label.input.readOnly=true;label.input.oninput=()=>{block.cols=label.input.value.split(';').map(x=>x.trim()).filter(Boolean).slice(0,10);mark()};tb.append(label.wrap);(block.rows||[]).forEach((r,i)=>{const row=$('div','ode-row');const f=field('Fila '+(i+1)+' · celdas separadas por ;',r.join(';'));f.input.oninput=()=>{block.rows[i]=f.input.value.split(';');mark()};row.append(f.wrap,button('×',()=>{block.rows.splice(i,1);mark();render()}));tb.append(row)});tb.append(button('+ AÑADIR FILA',()=>{block.rows=block.rows||[];block.rows.push([]);mark();render()}));tb.prepend(tableImportArea(block));card.append(tb)}

@@ -32,3 +32,8 @@
   background-color: rgba(23, 100, 135, 0.40);
   color: #173e55;
 }
+
+/* Zona interactiva de pegado y arrastre: no cambia los botones ni el tema de ordo. */
+.ode .ode-paste-focus{font:inherit;font-weight:600;color:#173e55;background:rgba(23,100,135,.12);border:1px solid #799eb3;border-radius:4px;padding:10px 12px;cursor:pointer;justify-self:start;}
+.ode .ode-paste-focus:hover,.ode .ode-paste-focus:focus-visible{background:rgba(23,100,135,.25);}
+.ode .ode-drop:focus-visible{outline:2px solid #176487;outline-offset:2px;}

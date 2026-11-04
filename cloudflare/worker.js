@@ -119,7 +119,7 @@ async function contextoRoute(req,env,actor,url){
   if(!['4.1','4.3','4.4'].includes(record.apartado)||!record.codigo||record.codigo.length>60||!record.titulo||record.titulo.length>200||!record.revision||record.revision.length>40||!/^\d{4}-\d{2}-\d{2}$/.test(record.fecha)||!Array.isArray(record.asignados)||record.asignados.some(x=>!DEPTS.includes(x)||x==='calidad')||!record.campos||typeof record.campos!=='object'||Array.isArray(record.campos)||Object.values(record.campos).some(x=>typeof x!=='string'||x.length>30000)||Object.keys(record.campos).length>10||(record.mapaImagen&&(!/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(record.mapaImagen)||record.mapaImagen.length>1000100)))return respond({error:'Datos incorrectos'},400);
   if(old&&old.apartado!==record.apartado)return respond({error:'No se puede cambiar el apartado'},400);
   if(old&&old.estado==='Obsoleto')return respond({error:'Reactiva el registro antes de editar'},409);
-  if(old&&JSON.stringify({...old,revision:''})!==JSON.stringify({...record,revision:''})&&old.revision===record.revision)return respond({error:'El cambio exige una nueva revisión'},409);
+  if(old&&old.estado==='Vigente'&&old.revision===record.revision)return respond({error:'El documento vigente requiere una nueva revisión antes de editar'},409);
   if(old&&old.revision!==record.revision){const used=await env.DB.prepare('SELECT 1 FROM contexto_revisiones WHERE registro_id=? AND revision=?').bind(id,record.revision).first();if(used)return respond({error:'La revisión ya existe en el histórico'},409)}
  }else return respond({error:'Operación no admitida'},405);
  const writes=[];

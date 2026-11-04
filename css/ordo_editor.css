@@ -37,3 +37,9 @@
 .ode .ode-paste-focus{font:inherit;font-weight:600;color:#173e55;background:rgba(23,100,135,.12);border:1px solid #799eb3;border-radius:4px;padding:10px 12px;cursor:pointer;justify-self:start;}
 .ode .ode-paste-focus:hover,.ode .ode-paste-focus:focus-visible{background:rgba(23,100,135,.25);}
 .ode .ode-drop:focus-visible{outline:2px solid #176487;outline-offset:2px;}
+
+/* Captura sin botones de pegado: una única zona visual grande y enfocada. */
+.ode .ode-drop{min-height:132px;display:flex;align-items:center;justify-content:center;text-align:center;cursor:text;position:relative;box-sizing:border-box;user-select:text;transition:background-color .12s,border-color .12s;overflow:hidden}
+.ode .ode-drop::before{content:attr(data-placeholder);font-weight:650;font-size:15px;color:#214c65;pointer-events:none;white-space:normal}
+.ode .ode-drop::after{content:'Selecciona esta zona y pega, o suelta aquí el archivo';position:absolute;top:calc(50% + 20px);left:6px;right:6px;color:#526d7e;font-size:12px;pointer-events:none}
+.ode .ode-drop:focus,.ode .ode-drop.ode-drag{background:#e1f1f9;border:2px dashed #176487;outline:2px solid rgba(23,100,135,.3);outline-offset:2px}

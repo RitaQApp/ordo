@@ -241,6 +241,15 @@
     return box;
   }
   function blockEditor(block,index){
+   if(block.kind==='chapter'){
+     const card=$('div','ode-block ode-chapter');
+     card.append($('strong','','CAPÍTULO'));
+     const title=field('Título del capítulo',block.title||'');
+     title.input.oninput=()=>{block.title=title.input.value;mark()};
+     card.append(title.wrap);
+     const buttons=$('div','ode-actions');buttons.append(button('SUBIR',()=>move(index,-1)),button('BAJAR',()=>move(index,1)),button('QUITAR CAPÍTULO',()=>{state.blocks.splice(index,1);mark();render()},'ode-danger'));
+     card.append(buttons);return card;
+   }
    const card=$('div','ode-block'),header=$('div','ode-block-head');
    const types=[['text','TEXTO'],['table','TABLA'],['image','IMAGEN'],['mixed','COMBINADO']];
    const name=$('strong','',`Bloque ${index+1}`),selector=$('select','ode-block-type');
@@ -258,7 +267,7 @@
      block.image=block.image||'';
      mark();render();
    };
-   header.append(name,selector,button('SUBIR',()=>move(index,-1)),button('BAJAR',()=>move(index,1)),button('QUITAR',()=>{state.blocks.splice(index,1);mark();render()},'ode-danger'));card.append(header);
+   header.append(name,selector,button('GUARDAR APARTADO',async()=>{try{await save(false);message.textContent='Apartado guardado en Cloudflare D1. Puedes seguir editando.'}catch(e){message.textContent=e.message}},'ode-primary'),button('SUBIR',()=>move(index,-1)),button('BAJAR',()=>move(index,1)),button('QUITAR',()=>{state.blocks.splice(index,1);mark();render()},'ode-danger'));card.append(header);
    const title=field('Título del apartado',block.title);title.input.oninput=()=>{block.title=title.input.value;mark()};card.append(title.wrap);
    if(block.kind==='text'||block.kind==='mixed'){const f=field('Texto',block.text||'','textarea');f.input.oninput=()=>{block.text=f.input.value;mark()};card.append(f.wrap)}
    if(block.kind==='table'||block.kind==='mixed'){const tb=$('div','ode-tabletools');tb.append(tableImportArea(block));tb.append(button('+ AÑADIR FILA',()=>{block.rows=block.rows||[];block.rows.push(Array.from({length:block.cols?.length||2},()=>''));mark();render()}));card.append(tb)}
@@ -277,34 +286,88 @@
    if(image.length>18000)throw Error('La imagen supera el tamaño admitido actualmente por el servidor. Prueba con una imagen más sencilla.');
    block.image=image;mark();render();message.textContent='Imagen incorporada al bloque. Graba el documento para almacenarla en Cloudflare.';
   }
-  function tabContent(){const options=$('div','ode-actions');[['text','+ TEXTO'],['table','+ TABLA'],['image','+ IMAGEN'],['mixed','+ COMBINADO']].forEach(([kind,title])=>options.append(button(title,()=>{state.blocks.push({id:key(),kind,title:'',text:'',cols:['Columna 1','Columna 2'],rows:[],image:''});mark();render()},'ode-primary')));content.append(options);
+  function tabContent(){const options=$('div','ode-actions');options.append(button('+ CAPÍTULO',()=>{state.blocks.push({id:key(),kind:'chapter',title:'Nuevo capítulo'});mark();render()},'ode-primary'));[['text','+ APARTADO DE TEXTO'],['table','+ TABLA'],['image','+ IMAGEN'],['mixed','+ COMBINADO']].forEach(([kind,title])=>options.append(button(title,()=>{state.blocks.push({id:key(),kind,title:'',text:'',cols:['Columna 1','Columna 2'],rows:[],image:''});mark();render()},'ode-primary')));content.append(options);
    const old=historical(state.record);if(old.length&&!state.blocks.length){const legacy=$('details','ode-legacy');legacy.append($('summary','','INFORMACIÓN YA EXISTENTE · Conservada sin alteraciones'));old.forEach(x=>{legacy.append($('strong','',x.title),$('p','',x.body))});content.append(legacy)}
    state.blocks.forEach((block,i)=>content.append(blockEditor(block,i)));
    if(id==='4.4'){const box=$('div','ode-block');box.append($('h3','','Mapa gráfico de procesos'));const file=$('input');file.type='file';file.accept='image/png,image/jpeg,image/webp';file.onchange=async()=>{const f=file.files[0];if(!f)return;if(f.size>700000){message.textContent='Para el mapa, el archivo debe ser inferior a 700 kB.';return}const reader=new FileReader();reader.onload=()=>{state.mapa=reader.result;mark();render()};reader.readAsDataURL(f)};box.append(file);if(state.mapa){const im=$('img','ode-preview-img');im.src=state.mapa;im.alt='Mapa de procesos';box.append(im,button('QUITAR MAPA',()=>{state.mapa=null;mark();render()}))}content.append(box)}}
-  function tabPreview(){const paper=$('article','ode-paper');paper.append($('h2','',state.record.titulo||'Sin título'),$('p','',`${state.record.codigo} · Rev. ${state.record.revision}`));for(const b of state.blocks){paper.append($('h3','',b.title||'Apartado'));if(b.text)paper.append($('p','',b.text));if((b.kind==='table'||b.kind==='mixed')&&b.rows?.length){const table=$('table'),tr=$('tr');(b.cols||[]).forEach(v=>tr.append($('th','',v)));table.append(tr);b.rows.forEach(row=>{const line=$('tr');row.forEach(v=>line.append($('td','',v)));table.append(line)});paper.append(table)}if(b.image){const img=$('img','ode-preview-img');img.src=b.image;img.alt=b.title||'Imagen';paper.append(img)}}if(state.mapa){const img=$('img','ode-preview-img');img.src=state.mapa;paper.append(img)}if(id!=='4.2'&&!state.blocks.length){historical(state.record).forEach(x=>{paper.append($('h3','',x.title),$('p','',x.body))})}content.append(paper)}
+  function tabPreview(){const paper=$('article','ode-paper');paper.append($('h2','',state.record.titulo||'Sin título'),$('p','',`${state.record.codigo} · Rev. ${state.record.revision}`));for(const b of state.blocks){if(b.kind==='chapter'){paper.append($('h2','',b.title||'Capítulo'));continue}paper.append($('h3','',b.title||'Apartado'));if(b.text)paper.append($('p','',b.text));if((b.kind==='table'||b.kind==='mixed')&&b.rows?.length){const table=$('table'),tr=$('tr');(b.cols||[]).forEach(v=>tr.append($('th','',v)));table.append(tr);b.rows.forEach(row=>{const line=$('tr');row.forEach(v=>line.append($('td','',v)));table.append(line)});paper.append(table)}if(b.image){const img=$('img','ode-preview-img');img.src=b.image;img.alt=b.title||'Imagen';paper.append(img)}}if(state.mapa){const img=$('img','ode-preview-img');img.src=state.mapa;paper.append(img)}if(id!=='4.2'&&!state.blocks.length){historical(state.record).forEach(x=>{paper.append($('h3','',x.title),$('p','',x.body))})}content.append(paper)}
+  // Catálogo documental: muestra los registros actuales y sus revisiones archivadas.
+  // No altera el código de pegado de tablas ni la edición de imágenes.
+  function estadoCategoria(estado){
+    const e=String(estado||'').toLowerCase();
+    return e==='vigente'?'vigente':e==='obsoleto'?'obsoleto':'borrador';
+  }
+  function catalogRow(record,categoria,archivado=false){
+    const item=$('div','ode-item');
+    const info=$('div');
+    const title=`${record.codigo||''} · ${record.titulo||'Sin título'}`;
+    info.append($('strong','',title),$('small','',`Revisión ${record.revision||'0'} · ${record.fecha||'Sin fecha'} · ${archivado?'Revisión archivada':categoria.toUpperCase()}`));
+    const controls=$('div','ode-item-actions');
+    if(archivado){
+      controls.append(button('CONSULTAR',()=>{
+        const oldRecord=clone(state.record),oldBlocks=clone(state.blocks),oldTab=state.tab;
+        state.record=clone(record);state.blocks=parseBlocks(record);state.tab='preview';render();
+        const returnButton=button('← VOLVER AL HISTÓRICO',()=>{state.record=oldRecord;state.blocks=oldBlocks;state.tab=oldTab;render()});
+        content.prepend(returnButton);
+      }));
+    }else{
+      controls.append(button('ABRIR',()=>{
+        if(state.dirty&&!confirm('Hay cambios sin guardar. ¿Quieres descartarlos para abrir otro documento?'))return;
+        edit(host,ctx,id,back,record);
+      }));
+    }
+    item.append(info,controls);return item;
+  }
   async function tabHistory(){
-    const heading=$('h2','','Asignaciones del paquete terminado');content.append(heading);
+    content.append($('h2','','Asignaciones del paquete terminado'));
     tabAssignments();
     const control=$('div','ode-actions');content.append(control);
     if(!isNew){
-      if(id==='4.2'&&state.record.estado==='vigente'){
-        control.append(button('ACTUALIZAR ASIGNACIONES',async()=>{try{await distribute()}catch(e){message.textContent=e.message}},'ode-primary'));
-      }
+      if(id==='4.2'&&state.record.estado==='vigente')control.append(button('ACTUALIZAR ASIGNACIONES',async()=>{try{await distribute()}catch(e){message.textContent=e.message}},'ode-primary'));
       if(id!=='4.2'&&state.record.estado==='Vigente')notice(content,'Para redistribuir un documento vigente, crea una nueva revisión y apruébala.');
     }
-    if(!isNew&&(state.record.estado==='borrador'||state.record.estado==='Borrador'||state.record.revision!==approvedOriginal.revision)){
+    if(!isNew&&(estadoCategoria(state.record.estado)==='borrador'||state.record.revision!==approvedOriginal.revision)){
       control.append(button('APROBAR Y ASIGNAR',async()=>{try{await save(true)}catch(e){message.textContent=e.message}},'ode-approve'));
     }
-    const title=$('h2','','Histórico de revisiones');content.append(title);
-    if(isNew){notice(content,'Graba primero el borrador. Después podrás asignarlo y aprobarlo aquí.');return}
-    if(id==='4.2'){
-      const loading=$('p','ode-notice','Cargando revisiones…');content.append(loading);
-      try{const data=await request('GET','/api/pi/'+state.record.id+'/history');loading.remove();showHistory((data.revisiones||[]).map(x=>decodePI(x.instantanea)))}
-      catch(e){loading.textContent=e.message};return;
-    }
-    showHistory(state.record.historial||[]);
+    const title=$('h2','','Histórico de revisiones · documentos por estado');content.append(title);
+    if(state.dirty)notice(content,'Tienes cambios sin guardar. Para que aparezcan en BORRADORES, pulsa GRABAR DOCUMENTO.');
+    const loading=$('p','ode-notice','Consultando documentos en Cloudflare D1…');content.append(loading);
+    try{
+      const docs=await loadRecords(id);
+      loading.remove();
+      const groups={vigente:[],borrador:[],obsoleto:[]};
+      for(const r of docs){groups[estadoCategoria(r.estado)].push({r,old:false});
+        // Revisiones sustituidas de los registros de Contexto.
+        if(id!=='4.2')for(const h of r.historial||[]){if(h.revision!==r.revision)groups.obsoleto.push({r:{...h,codigo:r.codigo,titulo:r.titulo},old:true})}
+      }
+      // El histórico de partes interesadas se consulta por paquete, no solo por el registro abierto.
+      if(id==='4.2'){
+        for(const r of docs){
+          try{
+            const data=await request('GET','/api/pi/'+r.id+'/history');
+            const seen=new Set();
+            for(const h of data.revisiones||[]){
+              const snapshot=decodePI(h.instantanea);
+              if(snapshot.revision===r.revision||seen.has(snapshot.revision))continue;
+              seen.add(snapshot.revision);
+              groups.obsoleto.push({r:snapshot,old:true});
+            }
+          }catch(e){notice(content,`No se pudo cargar el histórico de ${r.codigo}: ${e.message}`)}
+        }
+      }
+      const configs=[['vigente','EN VIGOR'],['borrador','BORRADORES (GUARDADOS SIN APROBAR)'],['obsoleto','OBSOLETOS']];
+      for(const [category,label] of configs){
+        const details=$('details','ode-history-group');
+        if(category==='vigente')details.open=true;
+        const summary=$('summary','',`${label} (${groups[category].length})`);
+        details.append(summary);
+        groups[category].sort((a,b)=>String(a.r.codigo||'').localeCompare(String(b.r.codigo||''),'es',{numeric:true})||String(b.r.revision||'').localeCompare(String(a.r.revision||'')));
+        if(!groups[category].length)details.append($('p','ode-hint','No hay documentos en esta categoría.'));
+        for(const entry of groups[category])details.append(catalogRow(entry.r,category,entry.old));
+        content.append(details);
+      }
+    }catch(e){loading.textContent='No se ha podido obtener el histórico: '+e.message}
   }
-  function showHistory(items){if(!items.length){notice(content,'No hay revisiones anteriores.');return}items.slice().reverse().forEach(x=>{const item=$('div','ode-item');item.append($('strong','',`Revisión ${x.revision} · ${x.fecha||''}`));item.append(button('CONSULTAR',()=>{const previous=clone(state.record),previousBlocks=clone(state.blocks);state.record=clone(x);state.blocks=parseBlocks(x);state.tab='preview';render();content.prepend(button('VOLVER A REVISIÓN ACTUAL',()=>{state.record=previous;state.blocks=previousBlocks;state.tab='history';render()}))}));content.append(item)})}
   async function save(approve=false){refreshMeta();const r=state.record;
     if(!r.codigo.trim()||!r.titulo.trim()||!r.revision.trim()||!r.fecha)throw Error('Indica código, título, revisión y fecha.');
     const dest=state.general?DEPS.map(([k])=>k):[...state.assign];if(approve&&!dest.length)throw Error('Selecciona al menos un departamento antes de aprobar.');
@@ -318,7 +381,7 @@
       }
       const body={...data,aprobar:approve,version:packet?.version??r.version};
       if(approve){body.tipo=state.general?'general':'especifico';body.departamentos=state.general?[]:dest;}
-      const result=await request('PUT','/api/pi/'+(packet?.id||r.id),body);packet=result.paquete;
+      if(!isNew||approve){const result=await request('PUT','/api/pi/'+(packet?.id||r.id),body);packet=result.paquete;}
       state.record=decodePI(packet);
     }else{
       const campos={...(r.campos||{})};const serial=JSON.stringify(state.blocks);if(serial.length>30000)throw Error('El contenido supera el límite del servidor (30.000 caracteres). Divide el documento.');
@@ -336,7 +399,7 @@
       state.record=result.registro;
     }
     isNew=false;state.blocks=parseBlocks(state.record);state.assign=new Set(state.record.asignados);state.general=id==='4.2'?state.record.tipo==='general':state.record.asignados.length===DEPS.length;
-    Object.assign(approvedOriginal,clone(state.record));state.tab=approve?'history':'general';state.dirty=false;render();message.textContent=approve?'Documento aprobado y asignado en Cloudflare D1.':'Borrador guardado en Cloudflare D1.';
+    Object.assign(approvedOriginal,clone(state.record));state.tab=approve?'history':state.tab;state.dirty=false;render();message.textContent=approve?'Documento aprobado y asignado en Cloudflare D1.':'Borrador guardado en Cloudflare D1.';
   }
   async function distribute(){if(isNew)return save();if(id!=='4.2')return save();
     const dest=state.general?[]:[...state.assign];if(!state.general&&!dest.length)throw Error('Selecciona un departamento.');

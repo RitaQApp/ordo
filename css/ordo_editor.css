@@ -43,3 +43,18 @@
 .ode .ode-drop::before{content:attr(data-placeholder);font-weight:650;font-size:15px;color:#214c65;pointer-events:none;white-space:normal}
 .ode .ode-drop::after{content:'Selecciona esta zona y pega, o suelta aquí el archivo';position:absolute;top:calc(50% + 20px);left:6px;right:6px;color:#526d7e;font-size:12px;pointer-events:none}
 .ode .ode-drop:focus,.ode .ode-drop.ode-drag{background:#e1f1f9;border:2px dashed #176487;outline:2px solid rgba(23,100,135,.3);outline-offset:2px}
+
+/* Editor real de tablas Gyrocopter: zona editable de filas y tuberías, con vista previa. */
+.ode .ode-table-import{display:grid;gap:8px;min-width:0}
+.ode .ode-table-caption{font-weight:700;color:#214c65}
+.ode .ode-table-pipe{display:block;width:100%;min-height:178px;box-sizing:border-box;resize:vertical;border:2px dashed #799eb3;border-radius:6px;background:#f8fbfd;color:#263e57;font:14px/1.5 inherit;padding:14px;white-space:pre;overflow:auto;tab-size:4}
+.ode .ode-table-pipe:focus,.ode .ode-table-pipe.ode-drag{border-color:#176487;background:#e9f3f9;outline:2px solid rgba(23,100,135,.22);outline-offset:2px}
+.ode .ode-table-preview{max-width:100%;overflow:auto;margin:4px 0 8px}
+.ode .ode-visual-table{border-collapse:collapse;width:max-content;min-width:100%;background:#fff;color:#263e57}
+.ode .ode-visual-table th,.ode .ode-visual-table td{border:1px solid #c8d2dc;text-align:left;vertical-align:top;padding:7px 10px;min-width:90px;white-space:pre-wrap}
+.ode .ode-visual-table th{background:rgba(23,100,135,.14);color:#214c65}
+/* Las imágenes usan un recuadro único, enfocable, sin controles extra de pegado. */
+.ode .ode-drop.ode-image-drop{display:flex;flex-direction:column;min-height:145px;gap:10px;cursor:copy}
+.ode .ode-drop.ode-image-drop::before,.ode .ode-drop.ode-image-drop::after{content:none;display:none}
+.ode .ode-image-drop strong{font-size:15px;color:#214c65}
+.ode .ode-image-drop small{font-size:13px;color:#526d7e}

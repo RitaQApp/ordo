@@ -7,7 +7,8 @@
  const SERVICIOS=[['servicios','Servicios Generales'],['biblioteca','Biblioteca'],['editorial','Editorial'],['acompanamiento','Instituto de Acompañamiento'],['colegio_mayor','Colegio Mayor']];
  const ALL=[['calidad','Calidad'],...SERVICIOS];
  const CAMPOS=[['grupo','Grupo de interés'],['descripcion','Descripción / integrantes'],['interes_ufv','Interés de la UFV'],['necesidades','Necesidades y expectativas del grupo'],['comunicacion','Canales de comunicación'],['seguimiento','Seguimiento / fuentes de información']];
- let token=null,auth=null,cache=[],activeHost=null,activeCtx=null,goBack=null;
+ const entry=window.OrdoEntrySession; delete window.OrdoEntrySession;
+ let token=entry?.token||null,auth=entry?.department||null,cache=[],activeHost=null,activeCtx=null,goBack=null;
  const $=(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!==undefined)n.textContent=txt;return n};
  const btn=(text,action,cls='')=>{const n=$('button','c4-btn '+cls,text);n.type='button';n.onclick=()=>Promise.resolve(action()).catch(e=>alert(e.message));return n};
  const text=(parent,tag,txt,cls)=>{const n=$(tag,cls,txt);parent.append(n);return n};
@@ -28,15 +29,7 @@
   let data;try{data=await res.json()}catch{throw Error('Respuesta no válida del servidor')}
   if(!res.ok){if(res.status===401){token=null;auth=null}throw Error(data.error||'Error '+res.status)}return data;
  }
- function login(host,ctx,back,continuar=null){const root=title(host,continuar?'4 · Acceso central':'4.2 · Acceso central',back,'Los datos no se guardan en el navegador. Autenticación contra Cloudflare.');
-  if(!ready()){notice(root,'Aún no se ha configurado la URL del servidor. No hay almacenamiento alternativo ni modo local.');return}
-  const box=$('div','c4-box pi-editor'),dept=field('Departamento',''),pwd=field('Contraseña','','password');
-  dept.e.remove();const s=$('select');ALL.forEach(([id,label])=>{const o=$('option','',label);o.value=id;s.append(o)});s.value=ctx?.departamento||'calidad';s.disabled=true;dept.w.append(s);
-  box.append(dept.w,pwd.w);const msg=$('p','c4-note');box.append(btn(continuar?'ACCEDER AL CAPÍTULO 4':'ACCEDER AL 4.2',async()=>{
-   try{const data=await api('POST','/api/login',{department:s.value,password:pwd.e.value});token=data.token;auth=data.department;pwd.e.value='';if(continuar)await continuar();else await listar(host,ctx,back)}catch(e){msg.textContent=e.message}
-  },'primary'),msg);root.append(box);
-  notice(root,'El acceso al resto de ordo continúa siendo independiente; en este módulo los permisos se verifican siempre en el servidor.');
- }
+ function login(){location.replace('index.html');}
  async function listar(host,ctx,back,aux=null){const root=title(host,aux?'Consulta auxiliar · '+ALL.find(([x])=>x===aux)?.[1]:'4.2 · Partes interesadas',back,'Información general y asignada. Datos cargados desde la base central.');
   notice(root,'Consultando base de datos central…');let data;
   try{data=await api('GET','/api/pi'+(aux?'?aux='+encodeURIComponent(aux):''))}catch(e){root.lastChild?.remove();notice(root,e.message);if(!token)root.append(btn('IDENTIFICARSE',()=>login(host,ctx,back)));return}
@@ -91,6 +84,6 @@
  function paper(p){const a=$('article','pi-document');a.append($('h2','',p.titulo),$('p','pi-meta',`Universidad Francisco de Vitoria · ${p.codigo} · Revisión ${p.revision} · Fecha ${p.fecha||''}`));if(p.texto)a.append($('p','pi-description',p.texto));const table=$('table','pi-doc-table'),thead=$('thead'),tr=$('tr');CAMPOS.forEach(([,label])=>tr.append($('th','',label)));thead.append(tr);table.append(thead);const body=$('tbody');(p.filas||[]).forEach(f=>{const row=$('tr');CAMPOS.forEach(([key])=>row.append($('td','',String(f[key]||''))));body.append(row)});table.append(body);a.append(table);return a}
  function imprimir(packages,titulo){if(!packages.length){alert('Sin contenido vigente para imprimir.');return}const w=window.open('','_blank');if(!w){alert('Activa la ventana de impresión.');return}const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const docs=packages.map(p=>paper(p).outerHTML).join('<div class="pagebreak"></div>');w.document.open();w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>'+esc(titulo)+'</title><style>@page{size:A4 landscape;margin:13mm}body{font-family:serif;font-size:10pt}article{break-before:page}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #9babb8;padding:6px;overflow-wrap:anywhere;white-space:pre-wrap}tr{break-inside:avoid}h2{font-size:16pt}.pi-meta{font-size:9pt;color:#555}.pi-description{white-space:pre-wrap}.foot{position:fixed;bottom:0;left:0;right:0;text-align:center;border-top:1px solid #aaa;padding:4px;background:#fff}.pagebreak{break-before:page}</style></head><body><h1>Universidad Francisco de Vitoria · 4.2 Partes interesadas</h1>'+docs+'<div class="foot">COPIA NO CONTROLADA</div></body></html>');w.document.close();w.focus();w.print()}
  function mostrar(host,ctx,back){activeHost=host;activeCtx=ctx;goBack=back;if(!token||auth!==ctx.departamento){token=null;auth=null;login(host,ctx,back)}else listar(host,ctx,back)}
- window.OrdoCentral=Object.freeze({api,ensure(host,ctx,back,continuar){if(token&&auth===ctx.departamento)return continuar();token=null;auth=null;return login(host,ctx,back,continuar)}});
+ window.OrdoCentral=Object.freeze({api,get department(){return auth},ensure(host,ctx,back,continuar){if(token&&auth===ctx.departamento)return continuar();token=null;auth=null;return login(host,ctx,back,continuar)}});
  window.OrdoPartesInteresadas=Object.freeze({mostrar});
 })();

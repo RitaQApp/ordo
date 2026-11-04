@@ -8,3 +8,27 @@
 
 /* Selector de tipo para todos los bloques documentales */
 .ode-block-type{border:1px solid #9ab8c6;border-radius:5px;background:#fff;color:#155875;font:inherit;padding:10px;min-width:132px;cursor:pointer}.ode-block-type:focus-visible{outline:2px solid #176487;outline-offset:2px}
+
+/* NORMA VISUAL ORDO: botones rellenos al 40 % de opacidad en el FONDO.
+   Los textos y bordes permanecen opacos para mantener la legibilidad.
+   Los botones no activos o secundarios conservan fondo blanco. */
+.ode .ode-button.ode-tab.active,
+.ode .ode-button.ode-primary:not(.ode-approve):not(.ode-print),
+.ode .ode-button.active:not(.ode-approve):not(.ode-print) {
+  background-color: rgba(23, 100, 135, 0.40);
+  color: #173e55;
+}
+.ode .ode-button.ode-approve {
+  background-color: rgba(23, 130, 77, 0.40);
+  color: #134c30;
+}
+.ode .ode-button.ode-print {
+  background-color: rgba(180, 49, 49, 0.40);
+  color: #722020;
+}
+/* Botones sólidos de adición de bloques y acciones que utilicen la clase primaria. */
+.ode .ode-button.ode-primary:hover,
+.ode .ode-button.ode-tab.active:hover {
+  background-color: rgba(23, 100, 135, 0.40);
+  color: #173e55;
+}

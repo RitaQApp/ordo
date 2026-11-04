@@ -81,10 +81,27 @@
     while(out.length&&out[out.length-1].every(v=>!v.trim()))out.pop();
     const max=Math.max(0,...out.map(r=>r.length));return out.map(r=>Array.from({length:max},(_,i)=>r[i]||''));
   }
+  // Portado del editor de Gyrocopter: filas separadas por retornos y columnas por " | ".
+  // Las celdas copiadas de Excel/Numbers llegan como TSV y las de Word/web como HTML.
   function readImportedTable(raw,html){
-    if(html){const doc=new DOMParser().parseFromString(html,'text/html');const tbl=doc.querySelector('table');if(tbl){const matrix=Array.from(tbl.rows).map(tr=>Array.from(tr.cells).map(td=>td.textContent.trim()));if(matrix.length)return matrix}}
-    const trimmed=(raw||'').trim();if(!trimmed)return [];
-    return parseSeparated(trimmed,trimmed.includes('\t')?'\t':(trimmed.includes(';')?';':','));
+    if(html){
+      const doc=new DOMParser().parseFromString(html,'text/html');
+      const tbl=doc.querySelector('table');
+      if(tbl){const matrix=Array.from(tbl.rows).map(tr=>Array.from(tr.cells).map(td=>td.textContent.replace(/\s+/g,' ').trim()));if(matrix.length)return matrix}
+    }
+    const trimmed=String(raw||'').trim();if(!trimmed)return [];
+    const delimiter=trimmed.includes('\t')?'\t':trimmed.includes('|')?'|':trimmed.includes(';')?';':',';
+    return parseSeparated(trimmed,delimiter).map(row=>row.map(value=>String(value||'').trim()));
+  }
+  function cleanPipeCell(v){return String(v??'').replace(/\s+/g,' ').replace(/\|/g,'/').trim()}
+  function tableToPipe(matrix){return matrix.map(row=>row.map(cleanPipeCell).join(' | ')).join('\n')}
+  function blockTableMatrix(block){return [block.cols||[],...(block.rows||[])]}
+  function previewTable(block,container){
+    container.replaceChildren();const matrix=blockTableMatrix(block);
+    if(!matrix.length||!matrix.some(row=>row.some(v=>String(v||'').trim())))return;
+    const table=$('table','ode-visual-table');
+    matrix.forEach((r,i)=>{const tr=$('tr');r.forEach(v=>tr.append($(i===0?'th':'td','',String(v??''))));table.append(tr)});
+    container.append(table);
   }
   function loadTableMatrix(block,matrix){
     if(!matrix.length)throw Error('La tabla no contiene datos.');
@@ -140,23 +157,14 @@
     if(file.size>350000)throw Error('Archivo demasiado grande para el editor.');
     const raw=await file.text();loadTableMatrix(block,readImportedTable(raw,/\.html?$/i.test(file.name)?raw:null));
   }
-  // Zonas de captura: se pega directamente sobre la superficie, sin botón intermedio.
-  // contenteditable garantiza que el navegador permita el pegado al tener foco editable.
+  // En imágenes la zona es un objetivo de arrastre y un elemento enfocable para ⌘V/Ctrl+V.
+  // Para tablas se utiliza un textarea real: permite pegado nativo en todos los navegadores.
   function makeDropArea(title,help){
-    const area=$('div','ode-drop');
+    const area=$('div','ode-drop ode-image-drop');
     area.tabIndex=0;
-    area.setAttribute('contenteditable','true');
-    area.setAttribute('role','textbox');
-    area.setAttribute('aria-multiline','false');
-    area.setAttribute('spellcheck','false');
-    area.setAttribute('aria-label',title+'. Haz clic en esta zona y pega con Comando o Control V, o arrastra aquí.');
-    area.dataset.placeholder=title+' · SOLTAR AQUÍ O PEGAR (⌘/Ctrl+V)';
-    // Las instrucciones se dibujan con CSS, no como nodos editables.
-    area.title=help;
-    area.addEventListener('beforeinput',ev=>{
-      if(ev.inputType==='insertFromPaste'||ev.inputType==='insertFromDrop')ev.preventDefault();
-    });
-    area.addEventListener('input',()=>{area.replaceChildren();});
+    area.setAttribute('role','button');
+    area.setAttribute('aria-label',title+'. Haz clic y pega una imagen o arrástrala hasta aquí.');
+    area.append($('strong','',title+' · ARRASTRA AQUÍ O PEGA (⌘V / Ctrl+V)'),$('small','',help));
     return area;
   }
   function attachDropEvents(area,handler){
@@ -170,29 +178,64 @@
     });
   }
   function tableImportArea(block){
-    const box=makeDropArea('TABLA','Arrastra aquí un XLSX, CSV, TSV, HTML o copia las celdas de Excel, Numbers o una tabla web y pega sobre esta zona.');
-    const receive=async dt=>{
+    const area=$('div','ode-table-import');
+    const label=$('label','ode-table-caption','TABLA · Una fila por línea y columnas separadas por |');
+    const ta=$('textarea','ode-table-pipe');
+    ta.rows=7;
+    ta.placeholder='Grupo de interés | Necesidades | Expectativas\nAlumnos | Formación de calidad | Atención personalizada';
+    ta.value=tableToPipe(blockTableMatrix(block));
+    ta.setAttribute('aria-label','Tabla editable. Pega aquí celdas de Excel, Numbers o Word, o escribe filas separadas por saltos de línea y columnas con |');
+    const preview=$('div','ode-table-preview');
+    previewTable(block,preview);
+    ta.addEventListener('input',()=>{
+      const matrix=readImportedTable(ta.value,'');
+      if(!matrix.length){block.rows=[];if(block.id!==PI_MAIN)block.cols=[];preview.replaceChildren();mark();return}
+      try{
+        if(matrix.length>501||matrix.some(row=>row.length>10))throw Error('Límite: 500 filas y 10 columnas.');
+        if(block.id===PI_MAIN){
+          if(matrix[0].length!==6)throw Error('La tabla principal de partes interesadas tiene seis columnas.');
+          block.cols=[...PI_LABELS];
+          block.rows=matrix.slice(1).map(r=>r.slice(0,6));
+        }else{block.cols=matrix[0];block.rows=matrix.slice(1)}
+        previewTable(block,preview);mark();
+      }catch(e){message.textContent=e.message}
+    });
+    // MISMO MECANISMO QUE GYROCOPTER: HTML tabla > texto TSV > tuberías.
+    ta.addEventListener('paste',e=>{
+      const html=e.clipboardData?.getData('text/html')||'';
+      const plain=e.clipboardData?.getData('text/plain')||'';
+      const matrix=readImportedTable(plain,html);
+      if(!matrix.length)return;
+      e.preventDefault();e.stopPropagation();
+      const incoming=tableToPipe(matrix);
+      const start=ta.selectionStart??ta.value.length,end=ta.selectionEnd??ta.value.length;
+      const defaultHeader=ta.value.trim()==='Columna 1 | Columna 2' && !(block.rows||[]).length;
+      const prefix=defaultHeader?'':ta.value.slice(0,start),suffix=defaultHeader?'':ta.value.slice(end);
+      const separator=prefix.trim()&&!prefix.endsWith('\n')?'\n':'';
+      ta.value=prefix+separator+incoming+suffix;
+      ta.dispatchEvent(new Event('input',{bubbles:true}));
+      ta.focus();
+    });
+    attachDropEvents(ta,async dt=>{
       const files=Array.from(dt?.files||[]);
       if(files.length){await importTableFile(block,files[0]);return}
-      const html=dt?.getData('text/html')||'';
-      const plain=dt?.getData('text/plain')||'';
-      const matrix=readImportedTable(plain,html);
-      if(!matrix.length)throw Error('No hay tabla en el portapapeles. Copia las celdas o arrastra el archivo sobre la zona.');
+      const matrix=readImportedTable(dt?.getData('text/plain')||'',dt?.getData('text/html')||'');
+      if(!matrix.length)throw Error('No se reconoce una tabla en lo arrastrado.');
       loadTableMatrix(block,matrix);
-    };
-    box.addEventListener('paste',async ev=>{ev.preventDefault();ev.stopPropagation();try{await receive(ev.clipboardData)}catch(e){message.textContent=e.message}});
-    attachDropEvents(box,receive);
-    return box;
+    });
+    area.append(label,ta,$('p','ode-hint','Pega directamente en el recuadro o suelta aquí una tabla o un archivo XLSX, CSV, TSV, TXT o HTML.'),preview);
+    return area;
   }
   function imageImportArea(block){
-    const box=makeDropArea('IMAGEN','Arrastra aquí una imagen PNG, JPG o WebP, o copia una imagen y pégala directamente sobre esta zona.');
+    const box=makeDropArea('IMAGEN','Haz clic en este recuadro y pulsa ⌘V / Ctrl+V, o arrastra una imagen PNG, JPG o WebP.');
     const receive=async dt=>{
       const items=Array.from(dt?.items||[]);
       const f=items.find(i=>i.kind==='file'&&i.type.startsWith('image/'))?.getAsFile()
         ||Array.from(dt?.files||[]).find(f=>f.type.startsWith('image/'));
-      if(!f)throw Error('No hay una imagen en el portapapeles. Copia la imagen original o arrastra PNG/JPG/WebP.');
+      if(!f)throw Error('No se detecta una imagen. Copia la imagen (no su enlace) o arrastra el archivo PNG, JPG o WebP.');
       await loadImageFile(f,block);
     };
+    box.addEventListener('click',()=>box.focus());
     box.addEventListener('paste',async ev=>{ev.preventDefault();ev.stopPropagation();try{await receive(ev.clipboardData)}catch(e){message.textContent=e.message}});
     attachDropEvents(box,receive);
     return box;
@@ -218,7 +261,7 @@
    header.append(name,selector,button('SUBIR',()=>move(index,-1)),button('BAJAR',()=>move(index,1)),button('QUITAR',()=>{state.blocks.splice(index,1);mark();render()},'ode-danger'));card.append(header);
    const title=field('Título del apartado',block.title);title.input.oninput=()=>{block.title=title.input.value;mark()};card.append(title.wrap);
    if(block.kind==='text'||block.kind==='mixed'){const f=field('Texto',block.text||'','textarea');f.input.oninput=()=>{block.text=f.input.value;mark()};card.append(f.wrap)}
-   if(block.kind==='table'||block.kind==='mixed'){const tb=$('div','ode-tabletools');const label=field('Encabezados de columnas (separados por ;)',(block.cols||['Columna 1','Columna 2']).join(';'));if(block.id===PI_MAIN)label.input.readOnly=true;label.input.oninput=()=>{block.cols=label.input.value.split(';').map(x=>x.trim()).filter(Boolean).slice(0,10);mark()};tb.append(label.wrap);(block.rows||[]).forEach((r,i)=>{const row=$('div','ode-row');const f=field('Fila '+(i+1)+' · celdas separadas por ;',r.join(';'));f.input.oninput=()=>{block.rows[i]=f.input.value.split(';');mark()};row.append(f.wrap,button('×',()=>{block.rows.splice(i,1);mark();render()}));tb.append(row)});tb.append(button('+ AÑADIR FILA',()=>{block.rows=block.rows||[];block.rows.push([]);mark();render()}));tb.prepend(tableImportArea(block));card.append(tb)}
+   if(block.kind==='table'||block.kind==='mixed'){const tb=$('div','ode-tabletools');tb.append(tableImportArea(block));tb.append(button('+ AÑADIR FILA',()=>{block.rows=block.rows||[];block.rows.push(Array.from({length:block.cols?.length||2},()=>''));mark();render()}));card.append(tb)}
    if(block.kind==='image'||block.kind==='mixed'){card.append(imageImportArea(block));const hint=$('p','ode-hint','La imagen se reduce para respetar el límite actual de la API.');card.append(hint);if(block.image){const im=$('img','ode-preview-img');im.src=block.image;im.alt=block.title||'Imagen';card.append(im,button('QUITAR IMAGEN',()=>{block.image='';mark();render()}))}}
    return card}
   function move(i,dir){const j=i+dir;if(j<0||j>=state.blocks.length)return;[state.blocks[i],state.blocks[j]]=[state.blocks[j],state.blocks[i]];mark();render()}

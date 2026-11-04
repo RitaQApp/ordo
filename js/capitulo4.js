@@ -2,7 +2,7 @@
 (() => {
 'use strict';
 let registros=[];
-const api=(...args)=>window.OrdoCentral.api(...args);
+const api=(...args)=>window.OrdoAPI.request(...args);
 const SECCIONES=[
   {id:'4.1',titulo:'Contexto interno y externo',info:'Cuestiones que afectan al Sistema de Calidad de la UFV.',campos:[
     ['tipo','Tipo de cuestión','select',['Interna','Externa']],

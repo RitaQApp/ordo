@@ -27,13 +27,7 @@
     if (submit) submit.disabled = true;
     aviso.textContent = 'Accediendo…';
     try {
-      const response = await fetch('https://ordo-api.dellaguno-consultoria.workers.dev/api/login', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({department: selector.value, password: clave.value}),
-        cache: 'no-store', credentials: 'omit'
-      });
-      const session = await response.json();
-      if (!response.ok) throw Error(session.error || 'No se pudo acceder.');
+      const session = await window.OrdoAPI.signIn(selector.value, clave.value);
       const page = await fetch('sistema.html?v=acceso-unico-20261104', {cache:'no-store'});
       if (!page.ok) throw Error('No se pudo cargar la aplicación.');
       const html = await page.text();

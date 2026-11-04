@@ -13,7 +13,7 @@ const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').
 const un64=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-s.length%4)%4)),c=>c.charCodeAt(0));
 const hmac=async(secret,payload)=>{const k=await crypto.subtle.importKey('raw',enc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);return b64(await crypto.subtle.sign('HMAC',k,enc.encode(payload)))};
 const safeEqual=(a,b)=>{let d=a.length^b.length;for(let i=0;i<Math.max(a.length,b.length);i++)d|=(a.charCodeAt(i)||0)^(b.charCodeAt(i)||0);return d===0};
-const parseJSON=async req=>{const s=await req.text();if(s.length>130000)throw Error('Contenido demasiado grande');return JSON.parse(s)};
+const parseJSON=async req=>{const s=await req.text();if(s.length>1200000)throw Error('Contenido demasiado grande');return JSON.parse(s)};
 const uuid=()=>crypto.randomUUID();
 const now=()=>new Date().toISOString();
 const verify=async(req,env)=>{
@@ -30,6 +30,7 @@ const values=p=>[p.codigo,p.titulo,p.tipo,JSON.stringify(p.departamentos),p.tipo
 const event=async(env,id,actor,accion,detalle={})=>env.DB.prepare('INSERT INTO eventos (id,paquete_id,actor_departamento,accion,detalle) VALUES (?,?,?,?,?)').bind(uuid(),id,actor,accion,JSON.stringify(detalle)).run();
 const view=async(env,id)=>packet(await env.DB.prepare('SELECT * FROM paquetes WHERE id=?').bind(id).first());
 async function route(req,env,actor,url){
+ if(url.pathname.startsWith('/api/contexto'))return contextoRoute(req,env,actor,url);
  const path=url.pathname,method=req.method;
  if(path==='/api/pi'&&method==='GET'){
   const aux=url.searchParams.get('aux')||null;
@@ -43,7 +44,7 @@ async function route(req,env,actor,url){
   const indata=await parseJSON(req),p={...pick(indata),compartida:indata.tipo==='general',estado:'borrador'};
   if(!valid(p)||p.codigo.length<3)return respond({error:'Datos incorrectos o asignación vacía'},400);
   const id=uuid();try{
-   await env.DB.prepare(`INSERT INTO paquetes (id,codigo,titulo,tipo,departamentos,compartida,revision,fecha,estado,texto,filas) VALUES (?,?,?,?,?,?,?,?,?,?)`).bind(id,...values(p)).run();await event(env,id,actor,'alta');
+   await env.DB.prepare(`INSERT INTO paquetes (id,codigo,titulo,tipo,departamentos,compartida,revision,fecha,estado,texto,filas) VALUES (?,?,?,?,?,?,?,?,?,?,?)`).bind(id,...values(p)).run();await event(env,id,actor,'alta');
    return respond({paquete:await view(env,id)},201);
   }catch(e){if(String(e).includes('UNIQUE'))return respond({error:'Código duplicado'},409);throw e}
  }
@@ -95,6 +96,39 @@ async function route(req,env,actor,url){
  }
  return respond({error:'Operación no admitida'},405);
 }
+async function contextoRoute(req,env,actor,url){
+ const method=req.method, match=url.pathname.match(/^\/api\/contexto(?:\/([a-zA-Z0-9_-]+)(?:\/(estado))?)?$/);
+ if(!match)return respond({error:'Ruta inexistente'},404);
+ const [,id,action]=match;
+ const decode=async row=>{const doc=JSON.parse(row.documento);doc.version=row.version;doc.historial=[];if(actor==='calidad'){const h=await env.DB.prepare('SELECT instantanea FROM contexto_revisiones WHERE registro_id=? ORDER BY archivado').bind(row.id).all();doc.historial=h.results.map(x=>JSON.parse(x.instantanea))}return doc};
+ const canRead=r=>actor==='calidad'||(r.estado==='Vigente'&&r.asignados.includes(actor));
+ if(method==='GET'&&!id){const rows=await env.DB.prepare('SELECT * FROM contexto ORDER BY apartado,codigo COLLATE NOCASE').all();return respond({registros:(await Promise.all(rows.results.map(decode))).filter(canRead)})}
+ if(actor!=='calidad')return respond({error:'Solo Calidad puede modificar registros'},403);
+ const d=await parseJSON(req);
+ let row=id?await env.DB.prepare('SELECT * FROM contexto WHERE id=?').bind(id).first():null;
+ if(id&&!row)return respond({error:'Registro inexistente'},404);
+ const old=row?JSON.parse(row.documento):null;
+ if(row&&d.version!==row.version)return respond({error:'Otra sesión ha modificado el registro. Vuelve a abrirlo.'},409);
+ let record;
+ if(action==='estado'&&method==='PATCH'){
+  if(!['Vigente','Obsoleto'].includes(d.estado))return respond({error:'Estado incorrecto'},400);
+  record={...old,estado:d.estado};
+ }else if((!id&&method==='POST')||(id&&!action&&method==='PUT')){
+  record={id:id||uuid(),apartado:String(d.apartado||''),codigo:String(d.codigo||'').trim(),titulo:String(d.titulo||'').trim(),fecha:String(d.fecha||''),revision:String(d.revision||'').trim(),estado:old?.estado||'Vigente',campos:d.campos,asignados:d.asignados,mapaImagen:d.apartado==='4.4'?d.mapaImagen||null:null};
+  if(!['4.1','4.3','4.4'].includes(record.apartado)||!record.codigo||record.codigo.length>60||!record.titulo||record.titulo.length>200||!record.revision||record.revision.length>40||!/^\d{4}-\d{2}-\d{2}$/.test(record.fecha)||!Array.isArray(record.asignados)||record.asignados.some(x=>!DEPTS.includes(x)||x==='calidad')||!record.campos||typeof record.campos!=='object'||Array.isArray(record.campos)||Object.values(record.campos).some(x=>typeof x!=='string'||x.length>30000)||Object.keys(record.campos).length>10||(record.mapaImagen&&(!/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(record.mapaImagen)||record.mapaImagen.length>1000100)))return respond({error:'Datos incorrectos'},400);
+  if(old&&old.apartado!==record.apartado)return respond({error:'No se puede cambiar el apartado'},400);
+  if(old&&old.estado==='Obsoleto')return respond({error:'Reactiva el registro antes de editar'},409);
+  if(old&&JSON.stringify({...old,revision:''})!==JSON.stringify({...record,revision:''})&&old.revision===record.revision)return respond({error:'El cambio exige una nueva revisión'},409);
+  if(old&&old.revision!==record.revision){const used=await env.DB.prepare('SELECT 1 FROM contexto_revisiones WHERE registro_id=? AND revision=?').bind(id,record.revision).first();if(used)return respond({error:'La revisión ya existe en el histórico'},409)}
+ }else return respond({error:'Operación no admitida'},405);
+ const writes=[];
+ if(old&&old.revision!==record.revision)writes.push(env.DB.prepare('INSERT OR IGNORE INTO contexto_revisiones(registro_id,revision,instantanea) SELECT ?,?,? WHERE EXISTS (SELECT 1 FROM contexto WHERE id=? AND version=?)').bind(id,old.revision,JSON.stringify({...old,archivado:now()}),id,d.version));
+ if(old)writes.push(env.DB.prepare('UPDATE contexto SET codigo=?,documento=?,version=version+1 WHERE id=? AND version=?').bind(record.codigo,JSON.stringify(record),id,d.version));
+ else writes.push(env.DB.prepare('INSERT INTO contexto(id,apartado,codigo,documento) VALUES (?,?,?,?)').bind(record.id,record.apartado,record.codigo,JSON.stringify(record)));
+ try{const result=await env.DB.batch(writes);if(old&&!result.at(-1).meta.changes)return respond({error:'Conflicto de edición'},409)}catch(e){if(String(e).includes('UNIQUE'))return respond({error:'Código duplicado'},409);throw e}
+ return respond({registro:await decode(await env.DB.prepare('SELECT * FROM contexto WHERE id=?').bind(record.id).first())},old?200:201);
+}
+
 export default {async fetch(req,env){
  const origin=req.headers.get('Origin')||'',allowed=env.FRONTEND_ORIGIN||'https://ritaqapp.github.io';
  const cors={ 'Access-Control-Allow-Origin':allowed,'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,OPTIONS','Access-Control-Allow-Headers':'Content-Type,Authorization','Vary':'Origin'};
@@ -102,7 +136,7 @@ export default {async fetch(req,env){
  if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{...cors,'Access-Control-Max-Age':'600'}});
  try{
   const url=new URL(req.url);
-  if(url.pathname==='/api/health'&&req.method==='GET')return respond({ok:true,storage:'Cloudflare D1'},200,cors);
+  if(url.pathname==='/api/health'&&req.method==='GET'){await env.DB.prepare('SELECT 1 FROM paquetes LIMIT 1').first();return respond({ok:true,storage:'Cloudflare D1'},200,cors)}
   if(url.pathname==='/api/login'&&req.method==='POST'){
    const data=await parseJSON(req),d=String(data.department||''),pw=String(data.password||'');
    if(!DEPTS.includes(d)||!env[DEPT_ENV[d]]||!pw||pw.length>256||!env.SESSION_SECRET)return respond({error:'Credenciales incorrectas'},401,cors);
